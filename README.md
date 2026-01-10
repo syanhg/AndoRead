@@ -1,2 +1,1 @@
-**The Predictive Intelligence Company
-**benchmark for predictive intelligence
+TPIC - The Predictive Intelligence Company
