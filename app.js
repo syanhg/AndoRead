@@ -1,6 +1,7 @@
-const API_BASE = '/api';
+const API_BASE = 'https://gamma-api.polymarket.com';
 let allEvents = [];
 let filteredEvents = [];
+let currentCategory = 'all';
 
 async function init() {
     await loadTags();
@@ -27,7 +28,7 @@ async function loadTags() {
     }
 }
 
-async function loadMarkets() {
+async function loadMarkets(category = null) {
     const loading = document.getElementById('loading');
     const error = document.getElementById('error');
     const container = document.getElementById('marketsContainer');
@@ -38,10 +39,10 @@ async function loadMarkets() {
     container.innerHTML = '';
     
     try {
-        const isLive = document.getElementById('statusToggle').checked;
+        const isLive = !document.getElementById('statusToggle').checked;
         const tagId = document.getElementById('topicFilter').value;
         
-        let url = `${API_BASE}/events?limit=50&active=true&closed=${!isLive}`;
+        let url = `${API_BASE}/events?limit=50&active=${isLive}&closed=${!isLive}`;
         if (tagId) {
             url += `&tag_id=${tagId}`;
         }
@@ -119,10 +120,11 @@ function applyFilters() {
 
 function renderMarkets() {
     const container = document.getElementById('marketsContainer');
+    const error = document.getElementById('error');
     container.innerHTML = '';
+    error.style.display = 'none';
     
     if (filteredEvents.length === 0) {
-        const error = document.getElementById('error');
         error.textContent = 'No markets match your search criteria';
         error.style.display = 'block';
         return;
@@ -241,7 +243,12 @@ function setupEventListeners() {
     const searchInput = document.getElementById('searchInput');
     const searchDropdown = document.getElementById('searchDropdown');
     
+    // Search dropdown functionality
     searchInput.addEventListener('focus', () => {
+        searchDropdown.classList.add('active');
+    });
+    
+    searchInput.addEventListener('click', () => {
         searchDropdown.classList.add('active');
     });
     
@@ -251,22 +258,58 @@ function setupEventListeners() {
         }
     });
     
+    // Browse option clicks
     document.querySelectorAll('.browse-option').forEach(option => {
-        option.addEventListener('click', () => {
+        option.addEventListener('click', (e) => {
+            e.stopPropagation();
             const category = option.dataset.category;
-            console.log('Selected category:', category);
+            currentCategory = category;
             searchDropdown.classList.remove('active');
+            loadMarkets(category);
         });
     });
     
+    // Nav bar category clicks
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            // Remove active class from all items
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            
+            // Add active class to clicked item
+            item.classList.add('active');
+            
+            const category = item.dataset.category;
+            currentCategory = category;
+            loadMarkets(category);
+        });
+    });
+    
+    // Search input
     searchInput.addEventListener('input', () => {
         applyFilters();
         renderMarkets();
     });
     
-    document.getElementById('topicFilter').addEventListener('change', loadMarkets);
-    document.getElementById('statusToggle').addEventListener('change', loadMarkets);
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            applyFilters();
+            renderMarkets();
+        }
+    });
     
+    // Topic filter
+    document.getElementById('topicFilter').addEventListener('change', () => {
+        loadMarkets(currentCategory);
+    });
+    
+    // Status toggle
+    document.getElementById('statusToggle').addEventListener('change', () => {
+        loadMarkets(currentCategory);
+    });
+    
+    // Sort controls
     document.getElementById('sortBy').addEventListener('change', () => {
         applyFilters();
         renderMarkets();
@@ -276,7 +319,6 @@ function setupEventListeners() {
         applyFilters();
         renderMarkets();
     });
-    
-    searchInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            applyFilt
+}
+
+init();
