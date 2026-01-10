@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Predictive Intelligence Company</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>The Predictive Intelligence Company</h1>
+    </header>
+
+    <div class="search-container">
+        <input type="text" id="searchInput" placeholder="Search events by title, topic, ticker, or markets...">
+        <button id="searchBtn">🔍</button>
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Topic:</label>
+            <select id="topicFilter">
+                <option value="">All</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Sort by:</label>
+            <select id="sortBy">
+                <option value="volume24hr">Last Updated</option>
+                <option value="volume">Volume</option>
+                <option value="liquidity">Liquidity</option>
+                <option value="startDate">Start Date</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Order:</label>
+            <select id="orderBy">
+                <option value="desc">High to Low</option>
+                <option value="asc">Low to High</option>
+            </select>
+        </div>
+        <div class="control-group toggle-group">
+            <label class="toggle-switch">
+                <span>Live</span>
+                <input type="checkbox" id="statusToggle" checked>
+                <span class="slider"></span>
+                <span>Historical</span>
+            </label>
+        </div>
+    </div>
+
+    <div id="loading" class="loading">Loading markets...</div>
+    <div id="error" class="error"></div>
+    <div id="marketsContainer" class="markets-grid"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
