@@ -7,51 +7,117 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <header>
-        <h1>The Predictive Intelligence Company</h1>
-    </header>
-
-    <div class="search-container">
-        <input type="text" id="searchInput" placeholder="Search events by title, topic, ticker, or markets...">
-        <button id="searchBtn">🔍</button>
+    <div class="top-bar">
+        <div class="header-container">
+            <div class="logo">The Predictive Intelligence Company</div>
+            <div class="search-wrapper">
+                <div class="search-container">
+                    <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input type="text" id="searchInput" placeholder="Search events by title, topic, ticker, or markets...">
+                </div>
+                <div class="search-dropdown" id="searchDropdown">
+                    <div class="dropdown-section">
+                        <div class="dropdown-title">Browse</div>
+                        <div class="browse-options">
+                            <div class="browse-option" data-category="new">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2v20M2 12h20"></path>
+                                </svg>
+                                <span>New</span>
+                            </div>
+                            <div class="browse-option" data-category="trending">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                                    <polyline points="17 6 23 6 23 12"></polyline>
+                                </svg>
+                                <span>Trending</span>
+                            </div>
+                            <div class="browse-option" data-category="popular">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
+                                </svg>
+                                <span>Popular</span>
+                            </div>
+                            <div class="browse-option" data-category="liquid">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                                </svg>
+                                <span>Liquid</span>
+                            </div>
+                            <div class="browse-option" data-category="ending-soon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                                <span>Ending Soon</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="controls">
-        <div class="control-group">
-            <label>Topic:</label>
-            <select id="topicFilter">
-                <option value="">All</option>
-            </select>
+    <div class="main-content">
+        <div class="nav-bar">
+            <a href="#" class="nav-item active">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                    <polyline points="17 6 23 6 23 12"></polyline>
+                </svg>
+                Trending
+            </a>
+            <a href="#" class="nav-item">Politics</a>
+            <a href="#" class="nav-item">Sports</a>
+            <a href="#" class="nav-item">Crypto</a>
+            <a href="#" class="nav-item">Finance</a>
+            <a href="#" class="nav-item">Geopolitics</a>
+            <a href="#" class="nav-item">Tech</a>
+            <a href="#" class="nav-item">Culture</a>
+            <a href="#" class="nav-item">Economy</a>
+            <a href="#" class="nav-item">Climate</a>
         </div>
-        <div class="control-group">
-            <label>Sort by:</label>
-            <select id="sortBy">
-                <option value="volume24hr">Last Updated</option>
-                <option value="volume">Volume</option>
-                <option value="liquidity">Liquidity</option>
-                <option value="startDate">Start Date</option>
-            </select>
-        </div>
-        <div class="control-group">
-            <label>Order:</label>
-            <select id="orderBy">
-                <option value="desc">High to Low</option>
-                <option value="asc">Low to High</option>
-            </select>
-        </div>
-        <div class="control-group toggle-group">
-            <label class="toggle-switch">
-                <span>Live</span>
-                <input type="checkbox" id="statusToggle" checked>
-                <span class="slider"></span>
-                <span>Historical</span>
-            </label>
-        </div>
-    </div>
 
-    <div id="loading" class="loading">Loading markets...</div>
-    <div id="error" class="error"></div>
-    <div id="marketsContainer" class="markets-grid"></div>
+        <div class="controls">
+            <div class="control-group">
+                <label>Topic:</label>
+                <select id="topicFilter">
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Sort by:</label>
+                <select id="sortBy">
+                    <option value="volume24hr">Last Updated</option>
+                    <option value="volume">Volume</option>
+                    <option value="liquidity">Liquidity</option>
+                    <option value="startDate">Start Date</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Order:</label>
+                <select id="orderBy">
+                    <option value="desc">High to Low</option>
+                    <option value="asc">Low to High</option>
+                </select>
+            </div>
+            <div class="control-group toggle-group">
+                <label class="toggle-switch">
+                    <span>Live</span>
+                    <input type="checkbox" id="statusToggle" checked>
+                    <span class="slider"></span>
+                    <span>Historical</span>
+                </label>
+            </div>
+        </div>
+
+        <div id="loading" class="loading">Loading markets...</div>
+        <div id="error" class="error"></div>
+        <div id="marketsContainer" class="markets-grid"></div>
+    </div>
 
     <script src="app.js"></script>
 </body>
