@@ -78,14 +78,11 @@ function renderMarketInfo() {
         prices = ['0.50', '0.50'];
     }
     
-    const imageUrl = currentMarket.image || mainMarket.image || '';
     const volume = formatCurrency(currentMarket.volume || 0);
     const volume24hr = formatCurrency(currentMarket.volume24hr || 0);
     const liquidity = formatCurrency(currentMarket.liquidity || 0);
     
     document.getElementById('marketInfo').innerHTML = `
-        <img src="${imageUrl}" alt="${escapeHtml(currentMarket.title)}" 
-             onerror="this.style.background='linear-gradient(135deg, #667eea 0%, #764ba2 100%)'; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3C/svg%3E'">
         <h1 class="market-title">${escapeHtml(currentMarket.title)}</h1>
         
         <div class="market-stats-grid">
@@ -161,15 +158,15 @@ async function searchRelevantSources(marketTitle) {
                 numResults: 10,
                 type: 'auto',
                 contents: {
-                    text: true,
-                    highlights: true
+                    text: true
                 },
                 useAutoprompt: true
             })
         });
         
         if (!response.ok) {
-            throw new Error(`Exa API error: ${response.status}`);
+            console.error(`Exa API error: ${response.status}`);
+            return [];
         }
         
         const data = await response.json();
@@ -185,7 +182,7 @@ async function generateClaudePrediction(market, sources) {
     try {
         // Prepare context from sources
         const sourceContext = sources.slice(0, 5).map((source, i) => {
-            const text = source.text || source.highlights?.join(' ') || '';
+            const text = source.text || '';
             return `Source ${i + 1} (${source.title}): ${text.substring(0, 500)}...`;
         }).join('\n\n');
         
@@ -232,6 +229,7 @@ Format your response as JSON:
         });
         
         if (!response.ok) {
+            console.error(`Claude API error: ${response.status}`);
             throw new Error(`Claude API error: ${response.status}`);
         }
         
@@ -327,7 +325,7 @@ function renderSources(sources) {
         <div class="source-item" onclick="window.open('${source.url}', '_blank')">
             <div class="source-title">${escapeHtml(source.title)}</div>
             <div class="source-description">
-                ${escapeHtml((source.highlights?.[0] || source.text || '').substring(0, 150))}...
+                ${escapeHtml((source.text || '').substring(0, 150))}...
             </div>
             <a href="${source.url}" class="source-url" onclick="event.stopPropagation()">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -340,24 +338,122 @@ function renderSources(sources) {
 }
 
 function setupChat() {
-    const chatInput = document.getElementById('chatInput');
-    const sendButton = document.getElementById('sendButton');
+    const floatingInput = document.getElementById('chatInputFloating');
+    const floatingButton = document.getElementById('sendButtonFloating');
+    const sideInput = document.getElementById('chatInputSide');
+    const sideButton = document.getElementById('sendButtonSide');
+    const chatPanel = document.getElementById('chatPanel');
+    const closeChat = document.getElementById('closeChat');
+    const floatingChatInput = document.getElementById('floatingChatInput');
     
-    // Auto-resize textarea
-    chatInput.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    // Auto-resize textareas
+    [floatingInput, sideInput].forEach(input => {
+        input.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
     });
     
-    // Send message on Enter (Shift+Enter for new line)
-    chatInput.addEventListener('keypress', function(e) {
+    // Floating input functionality
+    floatingInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            openChatPanel(floatingInput.value);
+        }
+    });
+    
+    floatingButton.addEventListener('click', () => {
+        openChatPanel(floatingInput.value);
+    });
+    
+    // Side input functionality
+    sideInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
         }
     });
     
-    sendButton.addEventListener('click', sendMessage);
+    sideButton.addEventListener('click', sendMessage);
+    
+    // Close chat panel
+    closeChat.addEventListener('click', () => {
+        chatPanel.className = 'chat-panel-hidden';
+        floatingChatInput.classList.remove('hidden');
+    });
+    
+    function openChatPanel(initialMessage) {
+        if (!initialMessage.trim()) return;
+        
+        // Show chat panel
+        chatPanel.className = 'chat-panel-visible';
+        floatingChatInput.classList.add('hidden');
+        
+        // Clear floating input
+        floatingInput.value = '';
+        floatingInput.style.height = 'auto';
+        
+        // Send initial message
+        addMessageToChat('user', initialMessage);
+        generateAndDisplayResponse(initialMessage);
+    }
+    
+    async function sendMessage() {
+        const input = document.getElementById('chatInputSide');
+        const message = input.value.trim();
+        
+        if (!message) return;
+        
+        // Clear input
+        input.value = '';
+        input.style.height = 'auto';
+        
+        // Add user message
+        addMessageToChat('user', message);
+        
+        // Disable input while processing
+        const sendButton = document.getElementById('sendButtonSide');
+        input.disabled = true;
+        sendButton.disabled = true;
+        
+        try {
+            await generateAndDisplayResponse(message);
+        } catch (error) {
+            console.error('Error generating response:', error);
+            addMessageToChat('assistant', 'Sorry, I encountered an error. Please try again.');
+        } finally {
+            input.disabled = false;
+            sendButton.disabled = false;
+            input.focus();
+        }
+    }
+    
+    async function generateAndDisplayResponse(userMessage) {
+        // Show typing indicator
+        const typingId = 'typing-' + Date.now();
+        const messagesContainer = document.getElementById('chatMessages');
+        const typingDiv = document.createElement('div');
+        typingDiv.id = typingId;
+        typingDiv.className = 'message assistant';
+        typingDiv.innerHTML = `
+            <div class="message-bubble">
+                <div class="typing-indicator">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        `;
+        messagesContainer.appendChild(typingDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        
+        try {
+            const response = await generateChatResponse(userMessage);
+            document.getElementById(typingId)?.remove();
+            addMessageToChat('assistant', response);
+        } catch (error) {
+            document.getElementById(typingId)?.remove();
+            throw error;
+        }
+    }
 }
 
 async function sendMessage() {
@@ -366,30 +462,7 @@ async function sendMessage() {
     
     if (!message) return;
     
-    // Clear input
-    input.value = '';
-    input.style.height = 'auto';
-    
-    // Add user message to chat
-    addMessageToChat('user', message);
-    
-    // Disable input while processing
-    const sendButton = document.getElementById('sendButton');
-    input.disabled = true;
-    sendButton.disabled = true;
-    
-    try {
-        // Generate response
-        const response = await generateChatResponse(message);
-        addMessageToChat('assistant', response);
-    } catch (error) {
-        console.error('Error generating response:', error);
-        addMessageToChat('assistant', 'Sorry, I encountered an error. Please try again.');
-    } finally {
-        input.disabled = false;
-        sendButton.disabled = false;
-        input.focus();
-    }
+    // This function is now handled in setupChat
 }
 
 async function generateChatResponse(userMessage) {
