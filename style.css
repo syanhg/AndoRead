@@ -30,7 +30,7 @@ body {
 
 .logo {
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 400;
     color: #000;
     white-space: nowrap;
     flex-shrink: 0;
@@ -146,6 +146,7 @@ body {
     border-bottom: 1px solid #e5e7eb;
     overflow-x: auto;
     white-space: nowrap;
+    align-items: center;
 }
 
 .nav-item {
@@ -158,6 +159,7 @@ body {
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-shrink: 0;
 }
 
 .nav-item:hover {
