@@ -42,7 +42,17 @@ async function loadMarkets() {
         const isLive = document.getElementById('statusToggle').checked;
         const tagId = document.getElementById('topicFilter').value || currentTagId;
         
-        let url = `${API_BASE}/events?limit=100&active=${isLive}&closed=${!isLive}`;
+        // Build query based on filters
+        let url = `${API_BASE}/events?limit=100`;
+        
+        // Apply status filter
+        if (isLive) {
+            url += `&active=true&closed=false`;
+        } else {
+            url += `&closed=true`;
+        }
+        
+        // Apply tag filter
         if (tagId) {
             url += `&tag_id=${tagId}`;
         }
@@ -179,12 +189,38 @@ function createMarketCard(event) {
         `Closes ${formatDate(endDate)}` : 
         `Closed ${formatDate(endDate)}`;
     
+    // Extract and format all available data
+    const volume = formatCurrency(event.volume || 0);
+    const volume24hr = formatCurrency(event.volume24hr || 0);
+    const liquidity = formatCurrency(event.liquidity || 0);
+    const numMarkets = markets.length || 1;
+    
     card.innerHTML = `
         <img src="${imageUrl}" class="market-image" alt="${escapeHtml(event.title)}" 
              onerror="this.style.background='linear-gradient(135deg, #667eea 0%, #764ba2 100%)'; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3C/svg%3E'">
         <div class="market-content">
             <h3 class="market-title">${escapeHtml(event.title)}</h3>
-            <div class="predictions-label">Top predictions for:</div>
+            
+            <div class="market-stats">
+                <div class="stat-item">
+                    <div class="stat-label">Volume</div>
+                    <div class="stat-value">${volume}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">24h Vol</div>
+                    <div class="stat-value">${volume24hr}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Liquidity</div>
+                    <div class="stat-value">${liquidity}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Markets</div>
+                    <div class="stat-value">${numMarkets}</div>
+                </div>
+            </div>
+            
+            <div class="predictions-label">Top predictions:</div>
             <div class="predictions">
                 ${predictions.map(p => `
                     <div class="prediction-item">
@@ -196,6 +232,7 @@ function createMarketCard(event) {
                     </div>
                 `).join('')}
             </div>
+            
             <div class="market-footer">
                 <span class="status-badge ${isLive ? 'live' : 'closed'}">
                     <span class="status-indicator"></span>
@@ -211,6 +248,17 @@ function createMarketCard(event) {
     });
     
     return card;
+}
+
+function formatCurrency(value) {
+    const num = parseFloat(value);
+    if (num >= 1000000) {
+        return '$' + (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+        return '$' + (num / 1000).toFixed(1) + 'K';
+    } else {
+        return '$' + num.toFixed(0);
+    }
 }
 
 function escapeHtml(text) {
@@ -323,8 +371,24 @@ function setupEventListeners() {
     });
     
     // Topic filter
-    document.getElementById('topicFilter').addEventListener('change', () => {
-        currentTagId = document.getElementById('topicFilter').value;
+    document.getElementById('topicFilter').addEventListener('change', (e) => {
+        currentTagId = e.target.value;
+        
+        // Update nav bar active state
+        document.querySelectorAll('.nav-item').forEach(item => {
+            if (currentTagId && item.dataset.tag === currentTagId) {
+                item.classList.add('active');
+                document.querySelectorAll('.nav-item').forEach(i => {
+                    if (i !== item) i.classList.remove('active');
+                });
+            } else if (!currentTagId && item.dataset.category === 'all') {
+                item.classList.add('active');
+                document.querySelectorAll('.nav-item').forEach(i => {
+                    if (i !== item) i.classList.remove('active');
+                });
+            }
+        });
+        
         loadMarkets();
     });
     
