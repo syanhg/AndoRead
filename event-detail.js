@@ -3,9 +3,9 @@ const urlParams = new URLSearchParams(window.location.search);
 const eventSlug = urlParams.get('event');
 
 // Initialize page
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
     setupSearchFunctionality();
-    await loadEventData();
+    loadEventData();
 });
 
 function setupSearchFunctionality() {
@@ -24,15 +24,15 @@ async function loadEventData() {
     
     if (!eventData.title) {
         document.getElementById('eventTitle').textContent = 'Event not found';
+        document.getElementById('closeDate').textContent = 'Closes: N/A';
+        document.getElementById('analysisSection').style.display = 'none';
         return;
     }
     
     displayEventInfo(eventData);
     
-    // Show quick mock analysis (instant)
-    setTimeout(() => {
-        displayMockAnalysis(eventData);
-    }, 800);
+    // Perform REAL analysis: Exa research + Claude AI
+    await performRealAnalysis(eventData);
 }
 
 function displayEventInfo(event) {
@@ -52,10 +52,256 @@ function displayEventInfo(event) {
     }
 }
 
-function displayMockAnalysis(event) {
-    // Generate smart mock predictions based on event title
-    const analysis = generateSmartPredictions(event);
+async function performRealAnalysis(event) {
+    const loadingState = document.querySelector('.loading-state');
     
+    try {
+        // STEP 1: Research with Exa - Get REAL web data
+        loadingState.innerHTML = `
+            <div class="spinner"></div>
+            <p>Researching with Exa AI...</p>
+            <p class="loading-detail">Searching the web for relevant information and sources</p>
+        `;
+        
+        const exaResults = await searchWithExa(event.title);
+        console.log('Exa results:', exaResults);
+        
+        if (exaResults.length === 0) {
+            throw new Error('No Exa search results found');
+        }
+        
+        // STEP 2: Analyze with Claude - REAL AI reasoning
+        loadingState.innerHTML = `
+            <div class="spinner"></div>
+            <p>Analyzing with Claude AI...</p>
+            <p class="loading-detail">Processing research data and generating predictions</p>
+        `;
+        
+        const analysis = await analyzeWithClaude(event, exaResults);
+        console.log('Claude analysis:', analysis);
+        
+        // STEP 3: Display results
+        displayAnalysisResults(analysis, exaResults);
+        
+    } catch (error) {
+        console.error('Analysis error:', error);
+        loadingState.innerHTML = `
+            <p style="color: #ef4444; font-size: 16px; margin-bottom: 8px;">Analysis Error</p>
+            <p class="loading-detail">${error.message}</p>
+            <p class="loading-detail" style="margin-top: 12px;">Please check console for details or try refreshing the page.</p>
+        `;
+    }
+}
+
+async function searchWithExa(query) {
+    try {
+        const response = await fetch('https://api.exa.ai/search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': 'ab80b7d9-b049-4cb8-94af-02cb6fa0b4d2'
+            },
+            body: JSON.stringify({
+                query: query,
+                numResults: 10,
+                useAutoprompt: true,
+                type: 'neural',
+                contents: {
+                    text: { maxCharacters: 2000 }
+                }
+            })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Exa API error:', response.status, errorText);
+            throw new Error(`Exa API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        return data.results || [];
+        
+    } catch (error) {
+        console.error('Exa search error:', error);
+        throw new Error(`Exa search failed: ${error.message}`);
+    }
+}
+
+async function analyzeWithClaude(event, exaResults) {
+    try {
+        // Build comprehensive prompt with Exa data
+        const prompt = buildAnalysisPrompt(event, exaResults);
+        
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 4000,
+                messages: [{
+                    role: 'user',
+                    content: prompt
+                }]
+            })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Claude API error:', response.status, errorText);
+            throw new Error(`Claude API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Raw Claude response:', data);
+        
+        // Extract text from response
+        const textContent = data.content
+            .filter(item => item.type === 'text')
+            .map(item => item.text)
+            .join('\n');
+        
+        console.log('Claude text content:', textContent);
+        
+        return parseClaudeResponse(textContent, exaResults);
+        
+    } catch (error) {
+        console.error('Claude analysis error:', error);
+        throw new Error(`Claude analysis failed: ${error.message}`);
+    }
+}
+
+function buildAnalysisPrompt(event, exaResults) {
+    // Format Exa sources
+    const sources = exaResults.slice(0, 8).map((result, i) => {
+        return `SOURCE ${i + 1}:
+Title: ${result.title}
+URL: ${result.url}
+Published: ${result.publishedDate || 'Recent'}
+Content: ${result.text || 'No content available'}
+
+---`;
+    }).join('\n\n');
+    
+    return `You are an expert forecasting analyst. Analyze this prediction market event using the research data provided.
+
+EVENT DETAILS:
+Title: ${event.title}
+Closes: ${event.closeDate}
+Volume: ${event.volume}
+24h Volume: ${event.volume24h}
+Liquidity: ${event.liquidity}
+
+RESEARCH DATA FROM EXA:
+${sources}
+
+ANALYSIS REQUIREMENTS:
+1. Carefully read ALL the source content above
+2. Extract key facts, statistics, trends, and expert opinions
+3. Identify historical patterns and precedents
+4. Consider base rates and reference classes
+5. Weight evidence by source quality and recency
+6. Generate probability estimates based on the evidence
+
+Provide your analysis in this EXACT JSON format (output ONLY valid JSON, no markdown):
+
+{
+  "predictions": [
+    {
+      "outcome": "Outcome 1 Name",
+      "probability": 0.XX,
+      "model": "Evidence-Based Analysis"
+    },
+    {
+      "outcome": "Outcome 2 Name",
+      "probability": 0.XX,
+      "model": "Evidence-Based Analysis"
+    }
+  ],
+  "rationale": "Comprehensive 3-4 sentence explanation citing specific evidence from sources. Mention key statistics, trends, or expert opinions that informed your prediction. Explain the reasoning chain from evidence to conclusion.",
+  "confidence": X.X,
+  "keyFactors": [
+    "Specific factor 1 with supporting evidence",
+    "Specific factor 2 with supporting evidence",
+    "Specific factor 3 with supporting evidence"
+  ],
+  "sourceAnalysis": [
+    {
+      "title": "Source title from above",
+      "relevance": "How this source specifically informed the prediction",
+      "url": "URL from above"
+    }
+  ]
+}
+
+CRITICAL INSTRUCTIONS:
+- Probabilities MUST sum to 1.0
+- Base predictions on ACTUAL evidence from sources
+- Cite specific facts, numbers, or quotes when possible
+- Confidence should reflect data quality (1-5 scale)
+- For sports: extract team names from title
+- For politics: consider polling data and trends
+- Output ONLY the JSON object, nothing else`;
+}
+
+function parseClaudeResponse(text, exaResults) {
+    try {
+        // Clean the response
+        let cleaned = text
+            .replace(/```json\n?/g, '')
+            .replace(/```\n?/g, '')
+            .trim();
+        
+        // Extract JSON
+        const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            console.error('No JSON found in Claude response:', text);
+            throw new Error('No JSON in Claude response');
+        }
+        
+        const parsed = JSON.parse(jsonMatch[0]);
+        
+        // Validate structure
+        if (!parsed.predictions || !Array.isArray(parsed.predictions) || parsed.predictions.length === 0) {
+            throw new Error('Invalid predictions structure');
+        }
+        
+        // Map sourceAnalysis to sources with URLs from Exa
+        if (parsed.sourceAnalysis && Array.isArray(parsed.sourceAnalysis)) {
+            parsed.sources = parsed.sourceAnalysis.map(sa => {
+                // Find matching Exa result
+                const exaMatch = exaResults.find(r => 
+                    r.title.toLowerCase().includes(sa.title.toLowerCase().substring(0, 20)) ||
+                    sa.title.toLowerCase().includes(r.title.toLowerCase().substring(0, 20))
+                );
+                
+                return {
+                    title: sa.title,
+                    description: sa.relevance,
+                    url: exaMatch ? exaMatch.url : sa.url || ''
+                };
+            });
+        } else {
+            // Fallback: use Exa results directly
+            parsed.sources = exaResults.slice(0, 3).map(r => ({
+                title: r.title,
+                description: 'Source used in analysis',
+                url: r.url
+            }));
+        }
+        
+        return parsed;
+        
+    } catch (error) {
+        console.error('Parse error:', error);
+        console.error('Raw text:', text);
+        throw new Error(`Failed to parse Claude response: ${error.message}`);
+    }
+}
+
+function displayAnalysisResults(analysis, exaResults) {
     // Hide loading
     document.getElementById('analysisSection').style.display = 'none';
     
@@ -81,12 +327,12 @@ function displayMockAnalysis(event) {
     document.getElementById('rationale').textContent = analysis.rationale;
     
     // Display confidence
-    const stars = Math.round(analysis.confidence);
+    const stars = Math.round(analysis.confidence || 3);
     const starsHtml = Array(5).fill(0).map((_, i) => 
         `<span class="star ${i < stars ? '' : 'empty'}">★</span>`
     ).join('');
     document.getElementById('confidenceStars').innerHTML = starsHtml;
-    document.getElementById('confidenceScore').textContent = `${analysis.confidence.toFixed(1)}/5`;
+    document.getElementById('confidenceScore').textContent = `${(analysis.confidence || 3).toFixed(1)}/5`;
     
     // Show sources
     if (analysis.sources && analysis.sources.length > 0) {
@@ -107,82 +353,6 @@ function displayMockAnalysis(event) {
     
     // Show chart
     displayProbabilityChart(analysis.predictions);
-}
-
-function generateSmartPredictions(event) {
-    const title = event.title.toLowerCase();
-    
-    // Detect event type and generate appropriate predictions
-    let prob1 = 0.50;
-    let rationale = '';
-    let confidence = 3.0;
-    let outcome1 = 'Yes';
-    let outcome2 = 'No';
-    
-    // Sports events
-    if (title.includes('vs') || title.includes(' at ') || title.includes('game') || title.includes('match')) {
-        const teams = title.split(/vs| at /);
-        if (teams.length >= 2) {
-            outcome1 = teams[0].trim().split(' ').slice(-2).join(' ');
-            outcome2 = teams[1].trim().split(' ').slice(0, 2).join(' ');
-        }
-        
-        if (title.includes('home') || title.includes('favorite')) {
-            prob1 = 0.55 + Math.random() * 0.15;
-            rationale = `Home team advantage and recent performance trends suggest a slight edge. Historical matchup data and current form indicate ${(prob1 * 100).toFixed(0)}% probability.`;
-            confidence = 3.5;
-        } else {
-            prob1 = 0.45 + Math.random() * 0.10;
-            rationale = `Based on team statistics, recent performance, and historical matchups, this appears to be a competitive game with relatively balanced odds.`;
-            confidence = 3.0;
-        }
-    }
-    // Political events
-    else if (title.includes('president') || title.includes('election') || title.includes('senate') || title.includes('congress')) {
-        prob1 = 0.40 + Math.random() * 0.20;
-        rationale = `Analysis of polling data, demographic trends, historical patterns, and current political climate suggests this outcome. Factors include voter turnout models and swing state dynamics.`;
-        confidence = 2.5;
-    }
-    // Crypto/Finance
-    else if (title.includes('bitcoin') || title.includes('btc') || title.includes('price') || title.includes('stock')) {
-        prob1 = 0.48 + Math.random() * 0.10;
-        rationale = `Market analysis based on technical indicators, trading volume, macroeconomic factors, and historical price patterns. Current market sentiment and momentum indicators are key factors.`;
-        confidence = 2.0;
-    }
-    // Yes/No events
-    else {
-        prob1 = 0.45 + Math.random() * 0.15;
-        rationale = `Based on available data, historical patterns, and current trends, this prediction reflects the most likely outcome. Multiple factors including timing, context, and precedent inform this analysis.`;
-        confidence = 3.0;
-    }
-    
-    const prob2 = 1 - prob1;
-    
-    return {
-        predictions: [
-            { outcome: outcome1, probability: prob1, model: 'AI Statistical Analysis' },
-            { outcome: outcome2, probability: prob2, model: 'AI Statistical Analysis' }
-        ],
-        rationale: rationale,
-        confidence: confidence,
-        sources: [
-            {
-                title: 'Historical Data Analysis',
-                description: 'Analyzed historical patterns and outcomes from similar events to establish baseline probabilities.',
-                url: ''
-            },
-            {
-                title: 'Market Sentiment Indicators',
-                description: 'Current market activity and trading patterns inform probability adjustments.',
-                url: ''
-            },
-            {
-                title: 'Statistical Models',
-                description: 'Multiple statistical approaches including regression analysis and trend detection.',
-                url: ''
-            }
-        ]
-    };
 }
 
 function displayProbabilityChart(predictions) {
