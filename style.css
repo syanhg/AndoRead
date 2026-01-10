@@ -14,7 +14,7 @@ body {
 .top-bar {
     background: #ffffff;
     border-bottom: 1px solid #e5e7eb;
-    padding: 0 40px;
+    padding: 0;
     position: sticky;
     top: 0;
     z-index: 100;
@@ -27,6 +27,7 @@ body {
     align-items: center;
     gap: 24px;
     height: 64px;
+    padding: 0 40px;
 }
 
 .logo {
@@ -451,8 +452,8 @@ body {
 }
 
 @media (max-width: 768px) {
-    .top-bar {
-        padding: 0 24px;
+    .header-container {
+        padding: 12px 24px;
     }
 
     .main-content {
