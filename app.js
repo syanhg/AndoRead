@@ -1,5 +1,7 @@
+// For GitHub Pages deployment - uses public CORS proxy
 const API_BASE = 'https://gamma-api.polymarket.com';
-const CORS_PROXY = 'https://corsproxy.io/?';
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+
 let allEvents = [];
 let filteredEvents = [];
 
@@ -13,7 +15,8 @@ async function init() {
 // Load available tags
 async function loadTags() {
     try {
-        const response = await fetch(`${CORS_PROXY}${encodeURIComponent(API_BASE + '/tags?limit=100')}`);
+        const url = `${API_BASE}/tags?limit=100`;
+        const response = await fetch(`${CORS_PROXY}${encodeURIComponent(url)}`);
         const tags = await response.json();
         const topicFilter = document.getElementById('topicFilter');
         
