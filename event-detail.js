@@ -3,7 +3,13 @@ const eventSlug = urlParams.get('event');
 
 document.addEventListener('DOMContentLoaded', () => {
     setupSearch();
-    loadEventData();
+    // Wait for Puter to load
+    if (typeof puter === 'undefined') {
+        console.error('Puter not loaded, retrying...');
+        setTimeout(loadEventData, 500);
+    } else {
+        loadEventData();
+    }
 });
 
 function setupSearch() {
@@ -30,38 +36,36 @@ async function loadEventData() {
     document.getElementById('volume24hStat').textContent = eventData.volume24h || '$0';
     document.getElementById('liquidityStat').textContent = eventData.liquidity || '$0';
     
-    // Quick mock predictions
-    displayQuickPredictions();
+    // Show loading predictions
+    displayLoadingPredictions();
     
-    // Start FAST analysis
-    await performFastAnalysis(eventData);
+    // Start analysis
+    await performAIAnalysis(eventData);
 }
 
-function displayQuickPredictions() {
-    // Show instant predictions while loading
+function displayLoadingPredictions() {
     const container = document.getElementById('predictionRows');
     container.innerHTML = `
         <div class="table-row">
-            <span class="row-label">Yes</span>
-            <span class="row-value">--</span>
-        </div>
-        <div class="table-row">
-            <span class="row-label">No</span>
+            <span class="row-label">Analyzing...</span>
             <span class="row-value">--</span>
         </div>
     `;
 }
 
-async function performFastAnalysis(event) {
+async function performAIAnalysis(event) {
     try {
-        // Step 1: Show thinking (instant)
+        console.log('Starting analysis for:', event.title);
+        
+        // Step 1: Show thinking
         showThinkingPhase(event);
         
-        // Step 2: Show searching (instant)
+        // Step 2: Show searching
         showSearchingPhase(event);
         
-        // Step 3: Get sources (FAST - only 5 sources)
-        const exaResults = await searchWithExa(event.title, 5);
+        // Step 3: Get sources (fast - only 6 sources)
+        console.log('Fetching sources...');
+        const exaResults = await searchWithExa(event.title, 6);
         console.log(`Got ${exaResults.length} sources`);
         
         // Step 4: Show reviewing
@@ -70,25 +74,39 @@ async function performFastAnalysis(event) {
         // Step 5: Display sources
         displaySources(exaResults);
         
-        // Step 6: Generate simple analysis (NO AI - instant)
-        generateSimpleAnalysis(event, exaResults);
+        // Step 6: AI Analysis with timeout
+        console.log('Starting AI analysis...');
+        const analysisPromise = runAIAnalysis(event, exaResults);
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('AI analysis timeout')), 30000)
+        );
+        
+        await Promise.race([analysisPromise, timeoutPromise]);
         
         // Hide status
         setTimeout(() => {
-            document.getElementById('analysisStatus').style.display = 'none';
-        }, 1500);
+            const statusEl = document.getElementById('analysisStatus');
+            if (statusEl) statusEl.style.display = 'none';
+        }, 2000);
         
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Analysis error:', error);
         document.getElementById('analysisContent').innerHTML = `
-            <p style="color: #ef4444;">Error loading analysis. Please refresh.</p>
+            <p style="color: #ef4444;"><strong>Error:</strong> ${error.message}</p>
+            <p style="color: #6b7280;">Showing basic analysis instead.</p>
         `;
+        
+        // Fallback to simple predictions
+        displayPredictions([
+            { outcome: 'Yes', probability: 0.5, confidence: 'Low' },
+            { outcome: 'No', probability: 0.5, confidence: 'Low' }
+        ]);
     }
 }
 
 function showThinkingPhase(event) {
     document.getElementById('thinkingContent').textContent = 
-        `Analyzing "${event.title}" based on current data...`;
+        `Analyzing "${event.title}" with AI...`;
 }
 
 function showSearchingPhase(event) {
@@ -96,9 +114,9 @@ function showSearchingPhase(event) {
     searchingSection.style.display = 'block';
     
     const queries = [
-        `${event.title.substring(0, 40)} predictions`,
-        `${event.title.substring(0, 40)} analysis`,
-        `${event.title.substring(0, 40)} forecast`
+        `${event.title.substring(0, 45)} predictions 2026`,
+        `${event.title.substring(0, 45)} analysis forecast`,
+        `${event.title.substring(0, 45)} expert opinion`
     ];
     
     const searchQueries = document.getElementById('searchQueries');
@@ -114,8 +132,8 @@ function showSearchingPhase(event) {
                 <span>${escapeHtml(query)}</span>
             `;
             searchQueries.appendChild(el);
-            setTimeout(() => el.classList.remove('shimmer-active'), 1000);
-        }, i * 100);
+            setTimeout(() => el.classList.remove('shimmer-active'), 1200);
+        }, i * 80);
     });
 }
 
@@ -140,15 +158,12 @@ function showReviewingPhase(exaResults) {
             if (domain.includes('youtube')) {
                 faviconClass = 'youtube';
                 faviconText = '▶';
-            } else if (domain.includes('reddit')) {
-                faviconClass = 'default';
-                faviconText = 'R';
             }
             
             el.innerHTML = `
                 <div class="source-favicon ${faviconClass}">${faviconText}</div>
                 <div class="source-info">
-                    <span class="source-title">${escapeHtml(source.title.substring(0, 50))}...</span>
+                    <span class="source-title">${escapeHtml(source.title.substring(0, 55))}...</span>
                     <div class="source-domain">${escapeHtml(domainName)}</div>
                 </div>
             `;
@@ -159,7 +174,7 @@ function showReviewingPhase(exaResults) {
     });
 }
 
-async function searchWithExa(query, numResults = 5) {
+async function searchWithExa(query, numResults = 6) {
     try {
         const response = await fetch('https://api.exa.ai/search', {
             method: 'POST',
@@ -173,12 +188,12 @@ async function searchWithExa(query, numResults = 5) {
                 useAutoprompt: true,
                 type: 'neural',
                 contents: {
-                    text: { maxCharacters: 500 }
+                    text: { maxCharacters: 800 }
                 }
             })
         });
         
-        if (!response.ok) throw new Error('Search failed');
+        if (!response.ok) throw new Error('Search API failed');
         const data = await response.json();
         return data.results || [];
         
@@ -188,36 +203,126 @@ async function searchWithExa(query, numResults = 5) {
     }
 }
 
-function generateSimpleAnalysis(event, exaResults) {
-    // Generate INSTANT analysis without AI
-    const analysisEl = document.getElementById('analysisContent');
+async function runAIAnalysis(event, exaResults) {
+    const prompt = buildPrompt(event, exaResults);
     
-    let analysis = `<h4>Event Overview</h4>
-    <p>This analysis is based on ${exaResults.length} recent sources covering "${event.title}".</p>`;
+    try {
+        // Check if puter is available
+        if (typeof puter === 'undefined' || !puter.ai || !puter.ai.chat) {
+            throw new Error('Puter AI not available');
+        }
+        
+        console.log('Calling puter.ai.chat...');
+        const analysisEl = document.getElementById('analysisContent');
+        analysisEl.innerHTML = '<p style="color: #6b7280;">AI is analyzing sources...</p>';
+        
+        let fullText = '';
+        let hasStarted = false;
+        
+        // Call AI with streaming
+        const stream = await puter.ai.chat(prompt);
+        
+        // Handle streaming response
+        if (stream && typeof stream[Symbol.asyncIterator] === 'function') {
+            for await (const chunk of stream) {
+                if (chunk && chunk.text) {
+                    hasStarted = true;
+                    fullText += chunk.text;
+                    analysisEl.innerHTML = formatAnalysisText(fullText);
+                }
+            }
+        } else if (stream && stream.text) {
+            // Non-streaming response
+            fullText = stream.text;
+            analysisEl.innerHTML = formatAnalysisText(fullText);
+        }
+        
+        if (!hasStarted) {
+            throw new Error('No response from AI');
+        }
+        
+        console.log('AI analysis complete, parsing...');
+        
+        // Parse and display
+        const analysis = parseResponse(fullText);
+        displayPredictions(analysis.predictions);
+        displayModelInsight(analysis.insight);
+        
+    } catch (error) {
+        console.error('AI Error:', error);
+        throw error;
+    }
+}
+
+function buildPrompt(event, exaResults) {
+    const sources = exaResults.slice(0, 6).map((r, i) => {
+        const text = (r.text || '').replace(/\n+/g, ' ').trim();
+        return `SOURCE ${i+1}: "${r.title}"
+From: ${new URL(r.url).hostname}
+Summary: ${text.substring(0, 600)}
+---`;
+    }).join('\n\n');
     
-    if (exaResults.length > 0) {
-        analysis += `<h4>Key Sources</h4>`;
-        exaResults.slice(0, 3).forEach((source, i) => {
-            const domain = new URL(source.url).hostname;
-            analysis += `<p><strong>Source ${i + 1}</strong> (${domain}): ${escapeHtml(source.title)}</p>`;
-        });
+    return `Analyze this prediction market event and provide probabilities.
+
+EVENT: "${event.title}"
+Market Volume: ${event.volume}
+Closes: ${event.closeDate}
+
+SOURCES:
+${sources}
+
+Analyze the sources and provide predictions in this exact JSON format:
+
+\`\`\`json
+{
+  "predictions": [
+    {"outcome": "Yes", "probability": 0.XX, "confidence": "High|Medium|Low"},
+    {"outcome": "No", "probability": 0.XX, "confidence": "High|Medium|Low"}
+  ],
+  "insight": "Brief key insight (one sentence)",
+  "confidence": "High|Medium|Low"
+}
+\`\`\`
+
+Provide a brief 2-3 paragraph analysis citing sources, then the JSON.`;
+}
+
+function parseResponse(text) {
+    try {
+        const jsonMatch = text.match(/```json\s*(\{[\s\S]*?\})\s*```/);
+        if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[1]);
+            return {
+                predictions: parsed.predictions || [],
+                insight: parsed.insight || 'Analysis complete',
+                confidence: parsed.confidence || 'Medium'
+            };
+        }
+    } catch (e) {
+        console.error('Parse error:', e);
     }
     
-    analysis += `<h4>Market Context</h4>
-    <p>Volume: ${event.volume} | 24h Volume: ${event.volume24h} | Liquidity: ${event.liquidity}</p>
-    <p>This market ${event.active ? 'is currently active' : 'has closed'} and closes on ${event.closeDate}.</p>`;
+    // Fallback
+    return {
+        predictions: [
+            { outcome: 'Yes', probability: 0.5, confidence: 'Medium' },
+            { outcome: 'No', probability: 0.5, confidence: 'Medium' }
+        ],
+        insight: 'See analysis above',
+        confidence: 'Medium'
+    };
+}
+
+function formatAnalysisText(text) {
+    let display = text.replace(/```json[\s\S]*?```/g, '').trim();
+    display = display.replace(/\*\*(.*?)\*\*/g, '<h4>$1</h4>');
     
-    analysisEl.innerHTML = analysis;
-    
-    // Simple predictions
-    const prob = 0.5 + (Math.random() - 0.5) * 0.4;
-    displayPredictions([
-        { outcome: 'Yes', probability: prob, confidence: 'Medium' },
-        { outcome: 'No', probability: 1 - prob, confidence: 'Medium' }
-    ]);
-    
-    document.getElementById('modelInsightText').textContent = 
-        `Based on ${exaResults.length} sources, this appears to be a ${event.active ? 'live' : 'historical'} prediction market.`;
+    const paragraphs = display.split('\n\n').filter(p => p.trim());
+    return paragraphs.map(p => {
+        if (p.includes('<h4>')) return p;
+        return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+    }).join('');
 }
 
 function displayPredictions(predictions) {
@@ -230,9 +335,13 @@ function displayPredictions(predictions) {
     `).join('');
 }
 
+function displayModelInsight(insight) {
+    document.getElementById('modelInsightText').textContent = insight;
+}
+
 function displaySources(exaResults) {
     const container = document.getElementById('sourcesList');
-    const sources = exaResults.slice(0, 5);
+    const sources = exaResults.slice(0, 6);
     
     document.getElementById('totalSources').textContent = sources.length;
     
