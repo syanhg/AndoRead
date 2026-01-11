@@ -39,13 +39,13 @@ async function performAdvancedAnalysis(event) {
     try {
         // Step 1: Comprehensive web research (MINIMUM 10 sources required)
         updateStatus('Conducting comprehensive research across multiple sources...');
-        const exaResults = await searchWithExa(event.title, 15);
+        const firecrawlResults = await searchWithFirecrawl(event.title, 15);
         
-        console.log(`Found ${exaResults.length} sources for analysis`);
+        console.log(`Found ${firecrawlResults.length} sources for analysis`);
         
         // CRITICAL: Must have at least 10 sources to proceed
-        if (exaResults.length < 10) {
-            const errorMsg = `INSUFFICIENT SOURCES: Found only ${exaResults.length} sources. Minimum 10 credible sources required for statistical analysis.`;
+        if (firecrawlResults.length < 10) {
+            const errorMsg = `INSUFFICIENT SOURCES: Found only ${firecrawlResults.length} sources. Minimum 10 credible sources required for statistical analysis.`;
             updateStatus(errorMsg);
             document.getElementById('analysisContent').innerHTML = `
                 <div style="padding: 20px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px;">
@@ -61,11 +61,11 @@ async function performAdvancedAnalysis(event) {
         }
         
         // Display sources immediately
-        displaySources(exaResults);
+        displaySources(firecrawlResults);
         
         // Step 2: Advanced multi-stage analysis with research paper methodology
         updateStatus('Performing advanced statistical analysis with AI using Bayesian inference...');
-        await streamAdvancedAnalysis(event, exaResults);
+        await streamAdvancedAnalysis(event, firecrawlResults);
         
     } catch (error) {
         console.error('Analysis error:', error);
@@ -76,31 +76,45 @@ async function performAdvancedAnalysis(event) {
     }
 }
 
-async function searchWithExa(query, numResults = 15) {
+async function searchWithFirecrawl(query, numResults = 15) {
     try {
-        const response = await fetch('https://api.exa.ai/search', {
+        const response = await fetch('https://api.firecrawl.dev/v1/search', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': 'ab80b7d9-b049-4cb8-94af-02cb6fa0b4d2'
+                'Authorization': 'Bearer fc-4cc481e0c9984a95b4de3c32e0d2a88f'
             },
             body: JSON.stringify({
                 query: query,
-                numResults: numResults,
-                useAutoprompt: true,
-                type: 'neural',
-                contents: {
-                    text: { maxCharacters: 2000 }
+                limit: numResults,
+                scrapeOptions: {
+                    formats: ['markdown'],
+                    onlyMainContent: true
                 }
             })
         });
         
-        if (!response.ok) throw new Error('Exa API error');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Firecrawl API error: ${errorData.message || response.statusText}`);
+        }
+        
         const data = await response.json();
-        return data.results || [];
+        
+        // Transform Firecrawl response to match our expected format
+        if (data.success && data.data) {
+            return data.data.map(result => ({
+                title: result.title || 'No title',
+                url: result.url || '',
+                text: result.markdown || result.description || '',
+                publishedDate: result.publishedDate || new Date().toISOString().split('T')[0]
+            }));
+        }
+        
+        return [];
         
     } catch (error) {
-        console.error('Exa error:', error);
+        console.error('Firecrawl error:', error);
         return [];
     }
 }
@@ -330,9 +344,9 @@ function displayAnalysisMetrics(analysis) {
         analysis.key_uncertainty ? analysis.key_uncertainty.substring(0, 30) + '...' : '--';
 }
 
-function displaySources(exaResults) {
+function displaySources(firecrawlResults) {
     const container = document.getElementById('sourcesList');
-    const sources = exaResults.slice(0, 15);
+    const sources = firecrawlResults.slice(0, 15);
     
     document.getElementById('totalSources').textContent = sources.length;
     
