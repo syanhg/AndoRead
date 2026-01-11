@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Event Analysis - Predictive Intelligence</title>
     <link rel="stylesheet" href="event-detail.css">
+    <!-- CRITICAL: Load Puter.js first -->
+    <script src="https://js.puter.com/v2/"></script>
+    <!-- Load ApexCharts for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 </head>
 <body>
     <!-- Header -->
@@ -77,32 +81,6 @@
                 <div class="insight-section">
                     <h3 class="insight-title">Key Insight</h3>
                     <div id="modelInsightText" class="insight-text">Analyzing event with AI agents...</div>
-                    <div id="sourcesVerified" class="sources-verified" style="display: none;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                        </svg>
-                        <span id="sourcesCount">0 sources analyzed</span>
-                    </div>
-                </div>
-
-                <!-- Analysis Metrics -->
-                <div id="analysisMetrics" class="analysis-metrics" style="display: none;">
-                    <h3 class="insight-title">Analysis Metrics</h3>
-                    <div class="metrics-grid">
-                        <div class="metric-item">
-                            <div class="metric-label">Base Rate</div>
-                            <div class="metric-value" id="baseRate">--</div>
-                        </div>
-                        <div class="metric-item">
-                            <div class="metric-label">Confidence</div>
-                            <div class="metric-value" id="confidenceLevel">--</div>
-                        </div>
-                        <div class="metric-item">
-                            <div class="metric-label">Key Risk</div>
-                            <div class="metric-value" id="keyUncertainty">--</div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
