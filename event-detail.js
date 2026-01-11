@@ -36,17 +36,30 @@ async function loadEventData() {
 
 async function performAdvancedAnalysis(event) {
     try {
-        // Step 1: Comprehensive web research (minimum 10 sources)
-        updateStatus('Conducting comprehensive research across multiple sources...');
-        const exaResults = await searchWithExa(event.title, 15); // Request more sources
+        // Step 1: Show thinking phase
+        showThinkingPhase(event);
+        
+        // Step 2: Show searching phase
+        await showSearchingPhase(event);
+        
+        // Step 3: Conduct comprehensive web research
+        const exaResults = await searchWithExa(event.title, 15);
         console.log(`Found ${exaResults.length} sources for analysis`);
         
-        // Display sources immediately
+        // Step 4: Show reviewing phase
+        showReviewingPhase(exaResults);
+        
+        // Display sources in sidebar
         displaySources(exaResults);
         
-        // Step 2: Advanced multi-stage Claude analysis with research paper methodology
-        updateStatus('Performing advanced statistical analysis with AI...');
+        // Step 5: Advanced multi-stage Claude analysis
         await streamAdvancedAnalysis(event, exaResults);
+        
+        // Hide status after complete
+        setTimeout(() => {
+            const statusEl = document.getElementById('analysisStatus');
+            if (statusEl) statusEl.style.display = 'none';
+        }, 3000);
         
     } catch (error) {
         console.error('Analysis error:', error);
@@ -54,6 +67,121 @@ async function performAdvancedAnalysis(event) {
             <p style="color: #000000;">Analysis encountered an error. Please refresh the page.</p>
         `;
     }
+}
+
+function showThinkingPhase(event) {
+    const thinkingContent = document.getElementById('thinkingContent');
+    const eventIntel = extractEventIntelligence(event.title);
+    
+    let thinkingText = `Predicting the future trajectory of "${event.title}" based on current trends and analyses.`;
+    
+    thinkingContent.textContent = thinkingText;
+}
+
+async function showSearchingPhase(event) {
+    // Show searching section
+    const searchingSection = document.getElementById('searchingSection');
+    searchingSection.style.display = 'block';
+    
+    const searchQueries = document.getElementById('searchQueries');
+    const eventIntel = extractEventIntelligence(event.title);
+    
+    // Generate intelligent search queries based on event type
+    const queries = generateSearchQueries(event, eventIntel);
+    
+    // Display queries one by one with delay
+    for (let i = 0; i < queries.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        const queryEl = document.createElement('div');
+        queryEl.className = 'search-query';
+        queryEl.innerHTML = `
+            <svg class="search-icon-small" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <span>${escapeHtml(queries[i])}</span>
+        `;
+        searchQueries.appendChild(queryEl);
+    }
+    
+    // Add small delay before moving to next phase
+    await new Promise(resolve => setTimeout(resolve, 500));
+}
+
+function generateSearchQueries(event, eventIntel) {
+    const title = event.title;
+    const queries = [];
+    
+    // Base query
+    queries.push(`${title.substring(0, 50)}... predictions 2026`);
+    
+    // Type-specific queries
+    if (eventIntel.type === 'sports' || eventIntel.type === 'championship') {
+        if (eventIntel.entities.length >= 2) {
+            queries.push(`${eventIntel.entities[0]} vs ${eventIntel.entities[1]} analysis`);
+        }
+        queries.push(`${title.substring(0, 40)} expert forecasts odds`);
+    } else if (eventIntel.type === 'political') {
+        queries.push(`${title.substring(0, 40)} polls forecasts`);
+        queries.push(`${title.substring(0, 40)} political analysis experts`);
+    } else if (eventIntel.type === 'financial') {
+        queries.push(`${title.substring(0, 40)} market analysis`);
+        queries.push(`${title.substring(0, 40)} financial forecasts`);
+    } else {
+        queries.push(`${title.substring(0, 40)} forecasts analysis`);
+        queries.push(`${title.substring(0, 40)} expert predictions`);
+    }
+    
+    return queries.slice(0, 3); // Return top 3 queries
+}
+
+function showReviewingPhase(exaResults) {
+    const reviewingSection = document.getElementById('reviewingSection');
+    const reviewingSources = document.getElementById('reviewingSources');
+    const reviewingLabel = document.getElementById('reviewingLabel');
+    
+    reviewingSection.style.display = 'block';
+    reviewingLabel.textContent = 'sources';
+    
+    // Show top 6 sources
+    const topSources = exaResults.slice(0, 6);
+    
+    topSources.forEach((source, index) => {
+        const domain = new URL(source.url).hostname.replace('www.', '');
+        const domainName = domain.split('.')[0];
+        
+        const sourceEl = document.createElement('div');
+        sourceEl.className = 'source-item';
+        
+        // Determine favicon style
+        let faviconClass = 'default';
+        let faviconText = domainName.charAt(0).toUpperCase();
+        
+        if (domain.includes('youtube')) {
+            faviconClass = 'youtube';
+            faviconText = '▶';
+        } else if (domain.includes('gizmodo')) {
+            faviconClass = 'gizmodo';
+            faviconText = 'G';
+        } else if (domain.includes('thestreet')) {
+            faviconClass = 'thestreet';
+            faviconText = '₿';
+        } else if (domain.includes('trading')) {
+            faviconClass = 'tradingkey';
+            faviconText = '⚡';
+        }
+        
+        sourceEl.innerHTML = `
+            <div class="source-favicon ${faviconClass}">${faviconText}</div>
+            <div class="source-info">
+                <span class="source-title">${escapeHtml(source.title.substring(0, 60))}${source.title.length > 60 ? '...' : ''}</span>
+                <div class="source-domain">${escapeHtml(domainName)}</div>
+            </div>
+        `;
+        
+        reviewingSources.appendChild(sourceEl);
+    });
 }
 
 async function searchWithExa(query, numResults = 15) {
@@ -119,16 +247,15 @@ async function streamAdvancedAnalysis(event, exaResults) {
         // Create sophisticated charts
         createAdvancedCharts(analysis);
         
-        updateStatus('Analysis complete');
-        setTimeout(() => {
-            const statusEl = document.getElementById('analysisStatus');
-            if (statusEl) statusEl.style.display = 'none';
-        }, 2000);
-        
     } catch (error) {
         console.error('Claude error:', error);
         throw error;
     }
+}
+
+function updateStatus(message) {
+    // No longer needed with Perplexity-style UI
+    console.log('Status:', message);
 }
 
 function extractEventIntelligence(title) {
@@ -227,9 +354,9 @@ Closes: ${event.closeDate}
 AVAILABLE SOURCES (${topSources.length} verified sources):
 ${sources}
 
-═══════════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════════
 ANALYSIS METHODOLOGY - Follow MIRAI ReAct Framework:
-═══════════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════════
 
 **STEP 1: Base Rate Analysis (Historical Prior)**
 Establish the baseline probability using:
@@ -323,9 +450,9 @@ Where X + Y + Z = 100%
 }
 \`\`\`
 
-═══════════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════════
 MANDATORY CHECKLIST - Verify before submitting:
-═══════════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════════
 ✓ Cited at least ${Math.min(topSources.length, 10)} sources by EXACT title
 ✓ Showed Bayesian probability updates for each major source  
 ✓ Provided base rate with historical justification
@@ -345,6 +472,34 @@ QUALITY STANDARDS:
 - Final prediction must be defensible using Bayesian reasoning
 
 Begin your analysis now, following ALL steps above. This is a rigorous forecasting task requiring statistical precision and exhaustive source documentation.`;
+}
+
+function assessSourceReliability(url) {
+    const domain = new URL(url).hostname.toLowerCase();
+    
+    // High reliability sources
+    if (domain.includes('reuters') || domain.includes('apnews') || 
+        domain.includes('bloomberg') || domain.includes('ft.com') ||
+        domain.includes('wsj.com') || domain.includes('economist.com')) {
+        return 'High (Tier 1 news)';
+    }
+    
+    // Medium-high reliability
+    if (domain.includes('nytimes') || domain.includes('washingtonpost') ||
+        domain.includes('cnn.com') || domain.includes('bbc.com') ||
+        domain.includes('theguardian') || domain.includes('forbes')) {
+        return 'Medium-High (Major news)';
+    }
+    
+    // Medium reliability
+    if (domain.includes('espn') || domain.includes('sportingnews') ||
+        domain.includes('techcrunch') || domain.includes('wired') ||
+        domain.includes('verge') || domain.includes('arstechnica')) {
+        return 'Medium (Specialist news)';
+    }
+    
+    // Lower reliability
+    return 'Medium-Low (Verify claims)';
 }
 
 function parseStreamedResponse(text) {
@@ -410,7 +565,7 @@ function displaySources(exaResults) {
     const container = document.getElementById('sourcesList');
     const sources = exaResults.slice(0, 15);
     
-    document.getElementById('sourcesCount').textContent = sources.length;
+    document.getElementById('totalSources').textContent = sources.length;
     
     container.innerHTML = sources.map((source, i) => `
         <div class="source-card">
@@ -528,14 +683,6 @@ function generateProbabilityTrend(finalProb, points) {
     // Ensure last point is exact
     data[points - 1] = parseFloat(finalProb.toFixed(1));
     return data;
-}
-
-function updateStatus(message) {
-    const el = document.getElementById('analysisStatus');
-    if (el) {
-        const textSpan = el.querySelector('span:last-child');
-        if (textSpan) textSpan.textContent = message;
-    }
 }
 
 function escapeHtml(text) {
