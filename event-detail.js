@@ -37,22 +37,22 @@ async function loadEventData() {
 
 async function performAdvancedAnalysis(event) {
     try {
-        // Step 1: Comprehensive web research (MINIMUM 10 sources required)
-        updateStatus('Conducting comprehensive research across multiple sources...');
-        const firecrawlResults = await searchWithFirecrawl(event.title, 15);
+        // Step 1: Comprehensive web research using Tavily (MINIMUM 10 sources required)
+        updateStatus('Conducting comprehensive research with Tavily AI Search...');
+        const tavilyResults = await searchWithTavily(event.title, 15);
         
-        console.log(`Found ${firecrawlResults.length} sources for analysis`);
+        console.log(`Found ${tavilyResults.length} sources for analysis`);
         
         // CRITICAL: Must have at least 10 sources to proceed
-        if (firecrawlResults.length < 10) {
-            const errorMsg = `INSUFFICIENT SOURCES: Found only ${firecrawlResults.length} sources. Minimum 10 credible sources required for statistical analysis.`;
+        if (tavilyResults.length < 10) {
+            const errorMsg = `INSUFFICIENT SOURCES: Found only ${tavilyResults.length} sources. Minimum 10 credible sources required for statistical analysis.`;
             updateStatus(errorMsg);
             document.getElementById('analysisContent').innerHTML = `
                 <div style="padding: 20px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px;">
                     <p style="color: #991b1b; font-weight: 600; margin-bottom: 8px;">Analysis Cannot Proceed</p>
                     <p style="color: #7f1d1d; font-size: 13px;">${errorMsg}</p>
                     <p style="color: #7f1d1d; font-size: 13px; margin-top: 12px;">
-                        Please try again later or choose a different event with more available information.
+                        The event "${event.title}" may be too niche or too recent. Please try a different event with more available information.
                     </p>
                 </div>
             `;
@@ -61,70 +61,73 @@ async function performAdvancedAnalysis(event) {
         }
         
         // Display sources immediately
-        displaySources(firecrawlResults);
+        displaySources(tavilyResults);
         
         // Step 2: Advanced multi-stage analysis with research paper methodology
         updateStatus('Performing advanced statistical analysis with AI using Bayesian inference...');
-        await streamAdvancedAnalysis(event, firecrawlResults);
+        await streamAdvancedAnalysis(event, tavilyResults);
         
     } catch (error) {
         console.error('Analysis error:', error);
         document.getElementById('analysisContent').innerHTML = `
-            <p style="color: #991b1b;">Analysis encountered an error. Please refresh the page.</p>
+            <p style="color: #991b1b;">Analysis encountered an error: ${error.message}</p>
         `;
         hideAnalysisStatus();
     }
 }
 
-async function searchWithFirecrawl(query, numResults = 15) {
+async function searchWithTavily(query, numResults = 15) {
     try {
-        const response = await fetch('https://api.firecrawl.dev/v1/search', {
+        // Tavily API optimized for AI agents and RAG
+        const response = await fetch('https://api.tavily.com/search', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer fc-4cc481e0c9984a95b4de3c32e0d2a88f'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
+                api_key: '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',
                 query: query,
-                limit: numResults,
-                scrapeOptions: {
-                    formats: ['markdown'],
-                    onlyMainContent: true
-                }
+                search_depth: 'advanced',
+                max_results: numResults,
+                include_answer: false,
+                include_raw_content: true,
+                include_domains: [],
+                exclude_domains: []
             })
         });
         
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(`Firecrawl API error: ${errorData.message || response.statusText}`);
+            throw new Error(`Tavily API error: ${errorData.error || response.statusText}`);
         }
         
         const data = await response.json();
         
-        // Transform Firecrawl response to match our expected format
-        if (data.success && data.data) {
-            return data.data.map(result => ({
-                title: result.title || 'No title',
+        // Transform Tavily response to our expected format
+        if (data.results && Array.isArray(data.results)) {
+            return data.results.map(result => ({
+                title: result.title || 'Untitled',
                 url: result.url || '',
-                text: result.markdown || result.description || '',
-                publishedDate: result.publishedDate || new Date().toISOString().split('T')[0]
+                text: result.content || result.raw_content || '',
+                publishedDate: result.published_date || new Date().toISOString().split('T')[0],
+                score: result.score || 0
             }));
         }
         
         return [];
         
     } catch (error) {
-        console.error('Firecrawl error:', error);
-        return [];
+        console.error('Tavily search error:', error);
+        throw error;
     }
 }
 
-async function streamAdvancedAnalysis(event, exaResults) {
-    const prompt = buildAdvancedAnalysisPrompt(event, exaResults);
+async function streamAdvancedAnalysis(event, tavilyResults) {
+    const prompt = buildAdvancedAnalysisPrompt(event, tavilyResults);
     
     try {
         const analysisEl = document.getElementById('analysisContent');
-        analysisEl.innerHTML = '';
+        analysisEl.innerHTML = '<p style="color: #6b7280;">Streaming AI analysis...</p>';
         
         const response = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
@@ -153,7 +156,7 @@ async function streamAdvancedAnalysis(event, exaResults) {
             displayModelInsight(analysis.insight);
             displayAnalysisMetrics(analysis);
             
-            updateStatus('Analysis complete - Multi-source statistical synthesis finished');
+            updateStatus(`Analysis complete - ${analysis.sources_cited} sources analyzed`);
             setTimeout(hideAnalysisStatus, 2000);
         }
         
@@ -163,19 +166,20 @@ async function streamAdvancedAnalysis(event, exaResults) {
     }
 }
 
-function buildAdvancedAnalysisPrompt(event, exaResults) {
+function buildAdvancedAnalysisPrompt(event, tavilyResults) {
     // Build comprehensive source context (minimum 10 sources)
-    const topSources = exaResults.slice(0, Math.max(10, exaResults.length));
+    const topSources = tavilyResults.slice(0, Math.max(10, tavilyResults.length));
     const sources = topSources.map((result, i) => 
         `[SOURCE ${i + 1}] ${result.title}
 URL: ${result.url}
-Published: ${result.publishedDate || 'Recent'}
-Content: ${(result.text || '').substring(0, 1200)}
+Published: ${result.publishedDate}
+Relevance Score: ${(result.score * 100).toFixed(1)}%
+Content: ${(result.text || '').substring(0, 1500)}
 ---`
     ).join('\n\n');
     
     // Advanced prompt based on MIRAI research paper methodology
-    return `You are a professional forecasting analyst using rigorous statistical methods and multi-source evidence synthesis.
+    return `You are a professional forecasting analyst using rigorous statistical methods and multi-source evidence synthesis following the MIRAI research paper methodology.
 
 CRITICAL REQUIREMENTS:
 - You MUST cite at least 10 different sources in your analysis
@@ -183,60 +187,66 @@ CRITICAL REQUIREMENTS:
 - Provide quantitative reasoning with statistical foundations
 - Use Bayesian updating when incorporating new evidence
 - Consider base rates, historical precedents, and trend analysis
+- Show your probability calculations step-by-step
 
 EVENT DETAILS:
 Title: ${event.title}
 Market Data: Volume ${event.volume}, 24h Vol ${event.volume24h}, Liquidity ${event.liquidity}
 Closes: ${event.closeDate}
+Current Status: ${event.active ? 'Active' : 'Closed'}
 
-AVAILABLE SOURCES (${topSources.length} sources):
+AVAILABLE SOURCES (${topSources.length} high-quality sources from Tavily AI Search):
 ${sources}
 
-ANALYSIS FRAMEWORK (following research methodology):
+ANALYSIS FRAMEWORK (following MIRAI research methodology):
 
 **Base Rate Analysis**
 Start with the prior probability based on:
-- Historical frequency of similar events
-- Domain-specific base rates
-- Reference class forecasting
-Cite historical data sources.
+- Historical frequency of similar events (cite specific data from sources)
+- Domain-specific base rates (reference industry statistics)
+- Reference class forecasting (compare to similar past events)
+Example: "Based on [SOURCE 1], similar events occur with X% frequency..."
 
 **Multi-Source Evidence Synthesis**
-Systematically evaluate each source:
-- Source 1 (cite title): Key finding and reliability assessment
-- Source 2 (cite title): Key finding and how it updates our belief
+Systematically evaluate each source with Bayesian updating:
+- Source 1 (cite exact title): Key finding and reliability assessment
+  Prior: X% → Updated to Y% because [specific evidence]
+- Source 2 (cite exact title): How this updates our belief
+  Prior: Y% → Updated to Z% because [specific evidence]
 - Continue through at least 10 sources
-- Note: Weight sources by credibility, recency, and sample size
+- Weight sources by: credibility (use relevance scores), recency, sample size
 - Identify consensus views vs. outlier predictions
 
 **Quantitative Probability Assessment**
+Show explicit Bayesian updating:
 - Starting probability (base rate): X%
-- After source 1: Updated to Y% because [specific evidence]
-- After source 2: Updated to Z% because [specific evidence]
+- After source 1: X% × [likelihood ratio] = Y%
+- After source 2: Y% × [likelihood ratio] = Z%
 - Continue through all major sources
-- Final probability with confidence interval
+- Final probability with 95% confidence interval: [A%, B%]
 
 **Statistical Indicators**
-- Trend direction and momentum
-- Volatility and uncertainty measures  
+- Trend direction and momentum (cite data)
+- Volatility measures (use market data: ${event.volume24h})
 - Correlation with related events/markets
-- Key leading indicators
+- Key leading indicators from sources
 
 **Risk Factors and Scenarios**
-Best case scenario (probability: X%): [description]
-Base case scenario (probability: Y%): [description]  
-Worst case scenario (probability: Z%): [description]
+Bull case (probability: X%): [specific scenario with evidence]
+Base case (probability: Y%): [most likely outcome with evidence]
+Bear case (probability: Z%): [downside scenario with evidence]
+Note: Probabilities must sum to 100%
 
 **Temporal Considerations**
-- Time until event: [X days]
+- Days until event closes
 - How probability may shift as event approaches
-- Key dates or catalysts to watch
+- Key catalysts or news to watch (cite sources)
 
 **Confidence Assessment**
-- Data quality: [High/Medium/Low]
-- Source agreement: [Strong/Moderate/Weak]
-- Overall confidence: [High/Medium/Low]
-- Key uncertainties remaining
+- Data quality: High/Medium/Low (based on source scores)
+- Source agreement: Strong/Moderate/Weak (quantify % agreement)
+- Overall confidence: High/Medium/Low
+- Key uncertainties remaining (be specific)
 
 \`\`\`json
 {
@@ -244,22 +254,24 @@ Worst case scenario (probability: Z%): [description]
     {"outcome": "Yes", "probability": 0.XX, "confidence": "High/Medium/Low"},
     {"outcome": "No", "probability": 0.XX, "confidence": "High/Medium/Low"}
   ],
-  "insight": "Single most important factor affecting outcome",
+  "insight": "Single most important factor affecting outcome based on source consensus",
   "confidence": "High|Medium|Low",
   "sources_cited": 10,
   "base_rate": 0.XX,
-  "key_uncertainty": "Primary risk factor"
+  "key_uncertainty": "Primary risk factor that could change prediction"
 }
 \`\`\`
 
 MANDATORY REQUIREMENTS:
 ✓ Cite at least 10 different sources by exact title throughout analysis
+✓ Show Bayesian updating calculations explicitly (prior → posterior)
 ✓ Provide specific probabilities with statistical reasoning
-✓ Show Bayesian updating process
-✓ Quantify uncertainty and confidence levels
+✓ Quantify uncertainty with confidence intervals
 ✓ Use domain-specific metrics and indicators
 ✓ Probabilities must sum to 1.0
-✓ No hedging or refusing to predict - provide definitive analysis`;
+✓ No hedging - provide definitive statistical analysis
+
+Remember: You have ${topSources.length} high-quality sources. Use them all strategically.`;
 }
 
 function parseStreamedResponse(text) {
@@ -344,9 +356,9 @@ function displayAnalysisMetrics(analysis) {
         analysis.key_uncertainty ? analysis.key_uncertainty.substring(0, 30) + '...' : '--';
 }
 
-function displaySources(firecrawlResults) {
+function displaySources(tavilyResults) {
     const container = document.getElementById('sourcesList');
-    const sources = firecrawlResults.slice(0, 15);
+    const sources = tavilyResults.slice(0, 15);
     
     document.getElementById('totalSources').textContent = sources.length;
     
@@ -360,7 +372,7 @@ function displaySources(firecrawlResults) {
                 ${escapeHtml((source.text || '').substring(0, 180))}...
             </div>
             <div class="source-citation">
-                [${i + 1}] ${new URL(source.url).hostname} • ${source.publishedDate || 'Recent'}
+                [${i + 1}] ${new URL(source.url).hostname} • ${source.publishedDate} • Score: ${(source.score * 100).toFixed(0)}%
             </div>
         </div>
     `).join('');
