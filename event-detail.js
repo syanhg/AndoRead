@@ -88,7 +88,9 @@ async function searchWithExa(query) {
 }
 
 async function streamClaudeAnalysis(event, exaResults) {
-    const prompt = buildAnalysisPrompt(event, exaResults);
+    // PRE-PROCESS: Extract event intelligence
+    const eventIntel = extractEventIntelligence(event.title);
+    const prompt = buildAnalysisPrompt(event, exaResults, eventIntel);
     
     try {
         // Check Puter.js availability
@@ -134,7 +136,60 @@ async function streamClaudeAnalysis(event, exaResults) {
     }
 }
 
-function buildAnalysisPrompt(event, exaResults) {
+function extractEventIntelligence(title) {
+    const titleLower = title.toLowerCase();
+    
+    // Detect event type and extract entities
+    let eventType = 'general';
+    let entities = [];
+    let context = '';
+    
+    // Sports detection
+    if (titleLower.match(/\bvs\b|\bat\b|game|match|championship|bowl|series|playoff/)) {
+        eventType = 'sports';
+        
+        // Extract teams
+        const vsMatch = title.match(/(.+?)\s+(?:vs\.?|at)\s+(.+?)(?:\s|$)/i);
+        if (vsMatch) {
+            entities = [vsMatch[1].trim(), vsMatch[2].trim()];
+            context = 'Sports matchup between two teams. Home field advantage typically adds 2-3% probability.';
+        }
+        
+        // Championship/Bowl detection
+        if (titleLower.includes('champion') || titleLower.includes('bowl')) {
+            eventType = 'championship';
+            context = 'Championship market - typically dominated by 2-4 top contenders with historical success patterns.';
+        }
+    }
+    
+    // Political detection
+    else if (titleLower.match(/election|president|senate|congress|governor|vote|poll/)) {
+        eventType = 'political';
+        context = 'Political event - consider polling averages, incumbency advantage (~5-10%), and historical electoral patterns.';
+    }
+    
+    // Market/Financial detection
+    else if (titleLower.match(/bitcoin|btc|eth|stock|price|\$|market|crypto/)) {
+        eventType = 'financial';
+        context = 'Financial market prediction - high volatility, consider technical indicators and macro trends.';
+    }
+    
+    // Binary prediction
+    else if (titleLower.match(/will|whether|does|can|should/)) {
+        eventType = 'binary';
+        entities = ['Yes', 'No'];
+        context = 'Binary outcome event - establish base rate from historical frequency.';
+    }
+    
+    return {
+        type: eventType,
+        entities: entities,
+        context: context,
+        title: title
+    };
+}
+
+function buildAnalysisPrompt(event, exaResults, eventIntel) {
     const sources = exaResults.slice(0, 6).map((result, i) => {
         return `[SOURCE ${i + 1}] ${result.title}
 URL: ${result.url}
@@ -142,6 +197,13 @@ Published: ${result.publishedDate || 'Recent'}
 Content: ${(result.text || 'No content').substring(0, 800)}
 ---`;
     }).join('\n\n');
+    
+    // Build entity-specific guidance
+    let entityGuidance = '';
+    if (eventIntel.entities.length > 0) {
+        entityGuidance = `\nDETECTED ENTITIES: ${eventIntel.entities.join(', ')}
+Use these as your prediction outcomes.`;
+    }
     
     return `<SYSTEM_CONTEXT>
 You are a professional prediction market analyst. Your role is to provide actionable forecasts, NOT to explain why you cannot make predictions.
@@ -190,17 +252,19 @@ Apply this rigorous methodology:
 
 <EVENT_DETAILS>
 Title: ${event.title}
+Type: ${eventIntel.type}
+Context: ${eventIntel.context}${entityGuidance}
 Closes: ${event.closeDate}
 Market Metrics:
 - Total Volume: ${event.volume} (indicator of interest/liquidity)
 - 24h Volume: ${event.volume24h} (recent activity level)
 - Liquidity: ${event.liquidity} (market depth)
 
-Context: This is a real prediction market with actual trading volume. The volume indicates ${parseFloat(event.volume?.replace(/[$,KM]/g, '') || 0) > 100 ? 'high interest - strong signal' : 'moderate interest'}.
+Market Signal: Volume of ${event.volume} indicates ${parseFloat(event.volume?.replace(/[$,KM]/g, '') || 0) > 100 ? 'high interest - strong signal quality' : 'moderate interest - standard market'}.
 </EVENT_DETAILS>
 
 <RESEARCH_SOURCES>
-${sources || 'Note: Limited web sources. Rely on your general knowledge of similar events, historical patterns, and statistical baselines for this type of prediction.'}
+${sources || 'Note: Limited web sources available. Primary analysis should rely on your knowledge of historical patterns, statistical baselines, and domain expertise for this type of event.'}
 </RESEARCH_SOURCES>
 
 <OUTPUT_FORMAT>
@@ -208,36 +272,37 @@ Write a comprehensive analysis in natural language. Structure it as:
 
 **Analysis:**
 
-[Paragraph 1] Start with the base rate and reference class. Example: "Historically, [type of event] occurs with X% frequency. Similar cases like [examples] show [pattern]."
+[Paragraph 1 - Base Rate] Start with historical context. Example: "For ${eventIntel.type} events like this, historical data shows [pattern]. Similar cases in recent years include [examples]."
 
-[Paragraph 2] Synthesize the evidence from sources. For each key point, cite like this: "According to [Source Name from above], [specific finding]." Or if using general knowledge: "Statistical analysis of similar markets shows [pattern]."
+[Paragraph 2 - Evidence] Synthesize available information. Cite sources when available: "According to [Source Name], [specific finding]." When using general knowledge: "Analysis of comparable markets indicates [insight]."
 
-[Paragraph 3] Explain your final probability estimate. Example: "Weighting recent performance (40%), historical patterns (30%), and market indicators (30%), this suggests a [X]% probability of [outcome]."
+[Paragraph 3 - Probability Reasoning] Explain your estimate. Example: "Weighting recent trends (40%), historical patterns (35%), and market indicators (25%), the evidence suggests approximately [X]% probability for [outcome]."
 
-[Paragraph 4] Address key uncertainties and confidence level.
+[Paragraph 4 - Key Factors] Address uncertainties: "Primary factors include [list]. Confidence is [level] due to [reasoning]."
 
 **Final Prediction:**
 
-```json
+\`\`\`json
 {
   "predictions": [
-    {"outcome": "[Specific team/person/outcome name]", "probability": 0.XX},
-    {"outcome": "[Alternative outcome name]", "probability": 0.XX}
+    {"outcome": "${eventIntel.entities[0] || 'Outcome 1'}", "probability": 0.XX},
+    {"outcome": "${eventIntel.entities[1] || 'Outcome 2'}", "probability": 0.XX}
   ],
-  "insight": "One actionable sentence: 'Key factor is [X], which favors [outcome]'",
+  "insight": "Key factor: [X] favors [outcome] based on [evidence]",
   "confidence": "High|Medium|Low"
 }
-```
+\`\`\`
 
 <CRITICAL_INSTRUCTIONS>
 - Probabilities MUST sum to exactly 1.0
-- For sports events with teams: Extract actual team names from the title (e.g., "Patriots vs Chiefs" → outcomes are "Patriots" and "Chiefs")
-- For "X at Y" format: Y is home team (slight advantage)
-- For championship markets: Pick 1-2 most likely winners based on current season context
-- For binary events: outcomes are "Yes" and "No"
-- DO NOT output probabilities of 0.50/0.50 unless truly uncertain - take a position
-- CITE sources by name when available, or cite "historical analysis" or "market patterns"
-- Make a definitive prediction - users need actionable forecasts
+- Use the detected entities above as your outcome names
+- DO NOT use generic "Outcome 1/2" - use specific names
+- For sports: Home team gets ~52-55% base probability before other factors
+- For championships: Focus on 1-2 favorites based on current season
+- DO NOT output 0.50/0.50 unless truly uncertain - take a position
+- CITE sources by name when available
+- Make definitive predictions - users need actionable forecasts
+- If truly uncertain, set confidence to "Low" but still provide probabilities
 </CRITICAL_INSTRUCTIONS>
 
 Now provide your analysis and prediction:`;
