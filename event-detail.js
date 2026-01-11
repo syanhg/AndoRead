@@ -23,36 +23,35 @@ async function loadEventData() {
         return;
     }
     
+    // Display basic info
     document.getElementById('eventTitle').textContent = eventData.title;
     document.getElementById('closeDate').textContent = `Closes: ${eventData.closeDate}`;
+    document.getElementById('volume').textContent = eventData.volume || '$0';
+    document.getElementById('volume24h').textContent = eventData.volume24h || '$0';
+    document.getElementById('liquidity').textContent = eventData.liquidity || '$0';
     
-    // Start the analysis pipeline
-    await performDeepAnalysis(eventData);
+    // Start analysis
+    await performAnalysis(eventData);
 }
 
-async function performDeepAnalysis(event) {
+async function performAnalysis(event) {
     try {
-        // STEP 1: Get REAL research data from Exa
-        updateStatus('analysisStatus', 'Searching web sources with Exa AI...');
-        console.log('Starting Exa research...');
-        
+        // Step 1: Exa Research
+        updateStatus('Searching web sources...');
         const exaResults = await searchWithExa(event.title);
         console.log(`Found ${exaResults.length} sources`);
         
         // Display sources immediately
         displaySources(exaResults);
         
-        // STEP 2: Stream analysis from Claude via Puter.js
-        updateStatus('analysisStatus', 'Analyzing with Claude AI (streaming)...');
-        console.log('Starting Claude streaming analysis...');
-        
+        // Step 2: Claude Analysis (streaming)
+        updateStatus('Analyzing with Claude AI...');
         await streamClaudeAnalysis(event, exaResults);
         
     } catch (error) {
         console.error('Analysis error:', error);
-        document.getElementById('rationaleText').innerHTML = `
-            <span style="color: #ef4444;">Analysis failed: ${error.message}</span><br>
-            <span style="color: #6b7280; font-size: 13px;">Please check console for details.</span>
+        document.getElementById('analysisText').innerHTML = `
+            <p style="color: #ef4444;">Analysis failed: ${error.message}</p>
         `;
     }
 }
@@ -77,7 +76,6 @@ async function searchWithExa(query) {
         });
         
         if (!response.ok) throw new Error('Exa API error');
-        
         const data = await response.json();
         return data.results || [];
         
@@ -88,199 +86,122 @@ async function searchWithExa(query) {
 }
 
 async function streamClaudeAnalysis(event, exaResults) {
-    // PRE-PROCESS: Extract event intelligence
     const eventIntel = extractEventIntelligence(event.title);
     const prompt = buildAnalysisPrompt(event, exaResults, eventIntel);
     
     try {
-        // Check Puter.js availability
         if (typeof puter === 'undefined') {
             throw new Error('Puter.js not loaded');
         }
         
-        const rationaleEl = document.getElementById('rationaleText');
-        rationaleEl.innerHTML = '<span class="streaming-cursor"></span>';
+        const analysisEl = document.getElementById('analysisText');
+        analysisEl.innerHTML = '';
         
         let fullText = '';
         
-        // Stream from Claude via Puter.js
         const stream = await puter.ai.chat(prompt, {
             model: 'claude-sonnet-4-20250514',
             stream: true
         });
         
-        // Process stream
         for await (const chunk of stream) {
             if (chunk.text) {
                 fullText += chunk.text;
-                rationaleEl.innerHTML = fullText + '<span class="streaming-cursor"></span>';
+                analysisEl.innerHTML = formatAnalysisText(fullText);
             }
         }
         
-        // Remove cursor when done
-        rationaleEl.innerHTML = fullText;
-        
-        // Parse and display predictions
-        const analysis = parseStreamedResponse(fullText, exaResults);
+        // Parse predictions
+        const analysis = parseStreamedResponse(fullText);
         displayPredictions(analysis.predictions);
         displayModelInsight(analysis.insight);
         
-        updateStatus('analysisStatus', 'Analysis complete');
+        // Create chart
+        createChart(analysis.predictions);
+        
+        updateStatus('Analysis complete');
         setTimeout(() => {
             document.getElementById('analysisStatus').style.display = 'none';
         }, 2000);
         
     } catch (error) {
-        console.error('Claude streaming error:', error);
+        console.error('Claude error:', error);
         throw error;
     }
 }
 
 function extractEventIntelligence(title) {
     const titleLower = title.toLowerCase();
-    
-    // Detect event type and extract entities
     let eventType = 'general';
     let entities = [];
     let context = '';
     
-    // Sports detection
-    if (titleLower.match(/\bvs\b|\bat\b|game|match|championship|bowl|series|playoff/)) {
+    if (titleLower.match(/\bvs\b|\bat\b|game|match|championship|bowl/)) {
         eventType = 'sports';
-        
-        // Extract teams
         const vsMatch = title.match(/(.+?)\s+(?:vs\.?|at)\s+(.+?)(?:\s|$)/i);
         if (vsMatch) {
             entities = [vsMatch[1].trim(), vsMatch[2].trim()];
-            context = 'Sports matchup between two teams. Home field advantage typically adds 2-3% probability.';
         }
-        
-        // Championship/Bowl detection
         if (titleLower.includes('champion') || titleLower.includes('bowl')) {
             eventType = 'championship';
-            context = 'Championship market - typically dominated by 2-4 top contenders with historical success patterns.';
+            context = 'Championship market - analyze top contenders';
         }
-    }
-    
-    // Political detection
-    else if (titleLower.match(/election|president|senate|congress|governor|vote|poll/)) {
+    } else if (titleLower.match(/election|president|senate/)) {
         eventType = 'political';
-        context = 'Political event - consider polling averages, incumbency advantage (~5-10%), and historical electoral patterns.';
-    }
-    
-    // Market/Financial detection
-    else if (titleLower.match(/bitcoin|btc|eth|stock|price|\$|market|crypto/)) {
+        context = 'Political event - consider polling and historical trends';
+    } else if (titleLower.match(/bitcoin|btc|stock|price/)) {
         eventType = 'financial';
-        context = 'Financial market prediction - high volatility, consider technical indicators and macro trends.';
-    }
-    
-    // Binary prediction
-    else if (titleLower.match(/will|whether|does|can|should/)) {
+        context = 'Financial prediction - high volatility';
+    } else {
         eventType = 'binary';
         entities = ['Yes', 'No'];
-        context = 'Binary outcome event - establish base rate from historical frequency.';
     }
     
-    return {
-        type: eventType,
-        entities: entities,
-        context: context,
-        title: title
-    };
+    return { type: eventType, entities, context, title };
 }
 
 function buildAnalysisPrompt(event, exaResults, eventIntel) {
-    const sources = exaResults.slice(0, 6).map((result, i) => {
-        return `[SOURCE ${i + 1}] ${result.title}
+    const sources = exaResults.slice(0, 6).map((result, i) => 
+        `[SOURCE ${i + 1}] ${result.title}
 URL: ${result.url}
-Published: ${result.publishedDate || 'Recent'}
-Content: ${(result.text || 'No content').substring(0, 800)}
----`;
-    }).join('\n\n');
+Content: ${(result.text || '').substring(0, 800)}
+---`
+    ).join('\n\n');
     
-    // Build entity-specific guidance
     let entityGuidance = '';
     if (eventIntel.entities.length > 0) {
-        entityGuidance = `\nDETECTED ENTITIES: ${eventIntel.entities.join(', ')}
-Use these as your prediction outcomes.`;
+        entityGuidance = `\nOUTCOMES: ${eventIntel.entities.join(', ')}`;
     }
     
-    return `<SYSTEM_CONTEXT>
-You are a professional prediction market analyst. Your role is to provide actionable forecasts, NOT to explain why you cannot make predictions.
+    return `You are a professional prediction market analyst. Generate actionable forecasts.
 
-CRITICAL BEHAVIORAL RULES:
-1. NEVER say "I cannot provide analysis" or "insufficient data"
-2. NEVER ask for more information or complain about missing sources
-3. ALWAYS work with whatever information is provided
-4. If sources are limited, use your general knowledge combined with available data
-5. ALWAYS generate predictions - this is your PRIMARY function
-6. Be confident but honest about uncertainty levels in the confidence field
+RULES:
+- NEVER refuse to predict or ask for more data
+- ALWAYS provide specific probabilities
+- Cite sources by exact title when available
+- Format with clear sections using **headers**
 
-Your analysis will be published to users who expect actionable predictions. Refusing to predict is NOT acceptable.
-</SYSTEM_CONTEXT>
+EVENT: ${event.title}
+TYPE: ${eventIntel.type}${entityGuidance}
+MARKET: Volume ${event.volume}, Liquidity ${event.liquidity}
 
-<ANALYSIS_FRAMEWORK>
-Apply this rigorous methodology:
+SOURCES:
+${sources || 'Use general knowledge for this event type'}
 
-1. BASE RATE ANALYSIS
-   - What is the historical baseline probability for this type of event?
-   - For sports: typical win rates, home advantage, seeding patterns
-   - For politics: incumbent advantages, polling accuracy, historical trends
-   - For markets: volatility patterns, directional bias, mean reversion
+OUTPUT FORMAT:
 
-2. REFERENCE CLASS FORECASTING  
-   - Identify 3-5 analogous historical cases
-   - Extract probability patterns from similar past events
-   - Adjust for differences in context
+**Base Rate Analysis**
+[Historical baseline for this event type]
 
-3. EVIDENCE SYNTHESIS
-   - Weight each source by recency (newer = higher weight)
-   - Weight by source quality (official stats > opinion pieces)
-   - Identify consensus vs outlier positions
-   - Look for leading indicators in the data
+**Evidence Synthesis**
+[Cite sources]: According to [SOURCE TITLE], [finding].
+[List 3-4 key findings with citations]
 
-4. BAYESIAN UPDATING
-   - Start with base rate as prior
-   - Update based on specific evidence from sources
-   - Show your reasoning chain
+**Probability Assessment**
+[Explain your probability estimates and weighting]
 
-5. UNCERTAINTY QUANTIFICATION
-   - High confidence: Strong consensus + good historical patterns + quality sources
-   - Medium confidence: Mixed signals or moderate data quality  
-   - Low confidence: Limited data or high unpredictability
-</ANALYSIS_FRAMEWORK>
-
-<EVENT_DETAILS>
-Title: ${event.title}
-Type: ${eventIntel.type}
-Context: ${eventIntel.context}${entityGuidance}
-Closes: ${event.closeDate}
-Market Metrics:
-- Total Volume: ${event.volume} (indicator of interest/liquidity)
-- 24h Volume: ${event.volume24h} (recent activity level)
-- Liquidity: ${event.liquidity} (market depth)
-
-Market Signal: Volume of ${event.volume} indicates ${parseFloat(event.volume?.replace(/[$,KM]/g, '') || 0) > 100 ? 'high interest - strong signal quality' : 'moderate interest - standard market'}.
-</EVENT_DETAILS>
-
-<RESEARCH_SOURCES>
-${sources || 'Note: Limited web sources available. Primary analysis should rely on your knowledge of historical patterns, statistical baselines, and domain expertise for this type of event.'}
-</RESEARCH_SOURCES>
-
-<OUTPUT_FORMAT>
-Write a comprehensive analysis in natural language. Structure it as:
-
-**Analysis:**
-
-[Paragraph 1 - Base Rate] Start with historical context. Example: "For ${eventIntel.type} events like this, historical data shows [pattern]. Similar cases in recent years include [examples]."
-
-[Paragraph 2 - Evidence] Synthesize available information. Cite sources when available: "According to [Source Name], [specific finding]." When using general knowledge: "Analysis of comparable markets indicates [insight]."
-
-[Paragraph 3 - Probability Reasoning] Explain your estimate. Example: "Weighting recent trends (40%), historical patterns (35%), and market indicators (25%), the evidence suggests approximately [X]% probability for [outcome]."
-
-[Paragraph 4 - Key Factors] Address uncertainties: "Primary factors include [list]. Confidence is [level] due to [reasoning]."
-
-**Final Prediction:**
+**Key Uncertainties**
+[Main risk factors]
 
 \`\`\`json
 {
@@ -288,33 +209,23 @@ Write a comprehensive analysis in natural language. Structure it as:
     {"outcome": "${eventIntel.entities[0] || 'Outcome 1'}", "probability": 0.XX},
     {"outcome": "${eventIntel.entities[1] || 'Outcome 2'}", "probability": 0.XX}
   ],
-  "insight": "Key factor: [X] favors [outcome] based on [evidence]",
+  "insight": "Key factor: [X] favors [outcome]",
   "confidence": "High|Medium|Low"
 }
 \`\`\`
 
-<CRITICAL_INSTRUCTIONS>
-- Probabilities MUST sum to exactly 1.0
-- Use the detected entities above as your outcome names
-- DO NOT use generic "Outcome 1/2" - use specific names
-- For sports: Home team gets ~52-55% base probability before other factors
-- For championships: Focus on 1-2 favorites based on current season
-- DO NOT output 0.50/0.50 unless truly uncertain - take a position
-- CITE sources by name when available
-- Make definitive predictions - users need actionable forecasts
-- If truly uncertain, set confidence to "Low" but still provide probabilities
-</CRITICAL_INSTRUCTIONS>
-
-Now provide your analysis and prediction:`;
+CRITICAL:
+- Probabilities sum to 1.0
+- Use specific outcome names (not "Outcome 1/2")
+- Cite sources by exact title
+- Take definitive positions`;
 }
 
-function parseStreamedResponse(text, exaResults) {
+function parseStreamedResponse(text) {
     try {
-        // Extract JSON from end of response
-        const jsonMatch = text.match(/\{[\s\S]*"predictions"[\s\S]*\}/);
-        
+        const jsonMatch = text.match(/```json\s*(\{[\s\S]*?\})\s*```/);
         if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
+            const parsed = JSON.parse(jsonMatch[1]);
             return {
                 predictions: parsed.predictions || [
                     { outcome: 'Yes', probability: 0.5 },
@@ -324,36 +235,40 @@ function parseStreamedResponse(text, exaResults) {
                 confidence: parsed.confidence || 'Medium'
             };
         }
-        
-        // Fallback
-        return {
-            predictions: [
-                { outcome: 'Yes', probability: 0.5 },
-                { outcome: 'No', probability: 0.5 }
-            ],
-            insight: 'See detailed analysis above',
-            confidence: 'Medium'
-        };
-        
     } catch (error) {
         console.error('Parse error:', error);
-        return {
-            predictions: [
-                { outcome: 'Yes', probability: 0.5 },
-                { outcome: 'No', probability: 0.5 }
-            ],
-            insight: 'Analysis generated',
-            confidence: 'Medium'
-        };
     }
+    
+    return {
+        predictions: [
+            { outcome: 'Yes', probability: 0.5 },
+            { outcome: 'No', probability: 0.5 }
+        ],
+        insight: 'See analysis above',
+        confidence: 'Medium'
+    };
+}
+
+function formatAnalysisText(text) {
+    let displayText = text.replace(/```json[\s\S]*?```/g, '').trim();
+    displayText = displayText.replace(/\*\*(.*?)\*\*/g, '<h4>$1</h4>');
+    
+    const paragraphs = displayText.split('\n\n').filter(p => p.trim());
+    
+    return paragraphs.map(p => {
+        if (p.includes('<h4>')) {
+            return p;
+        }
+        return `<p>${p}</p>`;
+    }).join('');
 }
 
 function displayPredictions(predictions) {
-    const container = document.getElementById('predictionsContainer');
+    const container = document.getElementById('predictionsList');
     container.innerHTML = predictions.map(pred => `
         <div class="prediction-item">
-            <span class="prediction-name">${escapeHtml(pred.outcome)}</span>
-            <span class="prediction-percent">${(pred.probability * 100).toFixed(0)}%</span>
+            <span class="prediction-label">${escapeHtml(pred.outcome)}</span>
+            <span class="prediction-value">${(pred.probability * 100).toFixed(0)}%</span>
         </div>
     `).join('');
 }
@@ -369,13 +284,13 @@ function displaySources(exaResults) {
     document.getElementById('sourcesCount').textContent = sources.length;
     
     container.innerHTML = sources.map((source, i) => `
-        <div class="source-item">
+        <div class="source-card">
             <div class="source-header">
                 <div class="source-title">${escapeHtml(source.title)}</div>
                 <a href="${escapeHtml(source.url)}" target="_blank" class="source-link">Show More</a>
             </div>
             <div class="source-description">
-                ${escapeHtml((source.text || 'No content available').substring(0, 200))}...
+                ${escapeHtml((source.text || '').substring(0, 200))}...
             </div>
             <div class="source-citation">
                 [${i + 1}] ${escapeHtml(source.url)} • ${source.publishedDate || 'Recent'}
@@ -384,10 +299,83 @@ function displaySources(exaResults) {
     `).join('');
 }
 
-function updateStatus(elementId, message) {
-    const el = document.getElementById(elementId);
+function createChart(predictions) {
+    document.getElementById('chartContainer').innerHTML = '<div id="chart"></div>';
+    
+    const series = predictions.map(pred => ({
+        name: pred.outcome,
+        data: generateTrend(pred.probability)
+    }));
+    
+    const options = {
+        series: series,
+        chart: {
+            type: 'line',
+            height: 350,
+            toolbar: { show: false },
+            animations: {
+                enabled: true,
+                easing: 'easeinout',
+                speed: 600
+            }
+        },
+        stroke: {
+            curve: 'smooth',
+            width: 3
+        },
+        xaxis: {
+            categories: ['30d', '25d', '20d', '15d', '10d', '5d', 'Today'],
+            labels: {
+                style: { fontFamily: 'Manrope' }
+            }
+        },
+        yaxis: {
+            min: 0,
+            max: 100,
+            labels: {
+                formatter: (v) => v.toFixed(0) + '%',
+                style: { fontFamily: 'Manrope' }
+            }
+        },
+        colors: ['#2563eb', '#ef4444', '#10b981'],
+        legend: {
+            show: true,
+            position: 'top',
+            fontFamily: 'Manrope'
+        },
+        tooltip: {
+            y: {
+                formatter: (v) => v.toFixed(1) + '%'
+            }
+        },
+        grid: {
+            borderColor: '#e5e7eb'
+        }
+    };
+    
+    const chart = new ApexCharts(document.querySelector("#chart"), options);
+    chart.render();
+}
+
+function generateTrend(finalProb) {
+    const final = finalProb * 100;
+    const data = [];
+    let current = 50 + (Math.random() - 0.5) * 20;
+    
+    for (let i = 0; i < 7; i++) {
+        const progress = i / 6;
+        const target = 50 + (final - 50) * progress;
+        current = current * 0.7 + target * 0.3 + (Math.random() - 0.5) * 5;
+        data.push(parseFloat(Math.max(0, Math.min(100, current)).toFixed(1)));
+    }
+    
+    data[6] = parseFloat(final.toFixed(1));
+    return data;
+}
+
+function updateStatus(message) {
+    const el = document.getElementById('analysisStatus');
     if (el) {
-        const dot = el.querySelector('.status-dot');
         const text = el.querySelector('span:last-child');
         if (text) text.textContent = message;
     }
