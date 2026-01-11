@@ -22,31 +22,6 @@ body {
     z-index: 1000;
     display: block !important;
     visibility: visible !important;
-    transition: background-color 0.3s ease, backdrop-filter 0.3s ease;
-}
-
-.top-bar.scrolled {
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(10px);
-    border-bottom-color: rgba(255, 255, 255, 0.1);
-}
-
-.top-bar.scrolled .back-button,
-.top-bar.scrolled .logo,
-.top-bar.scrolled #searchInput::placeholder {
-    color: #ffffff;
-}
-
-.top-bar.scrolled .back-button svg,
-.top-bar.scrolled .search-icon {
-    stroke: #ffffff;
-    color: #ffffff;
-}
-
-.top-bar.scrolled #searchInput {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
-    color: #ffffff;
 }
 
 .header-container {
