@@ -20,6 +20,7 @@ async function loadEventData() {
     
     if (!eventData.title) {
         document.getElementById('eventTitle').textContent = 'Event not found';
+        hideAnalysisStatus();
         return;
     }
     
@@ -30,29 +31,48 @@ async function loadEventData() {
     document.getElementById('volume24hStat').textContent = eventData.volume24h || '$0';
     document.getElementById('liquidityStat').textContent = eventData.liquidity || '$0';
     
-    // Start comprehensive analysis
+    // Start comprehensive analysis with minimum 10 sources requirement
     await performAdvancedAnalysis(eventData);
 }
 
 async function performAdvancedAnalysis(event) {
     try {
-        // Step 1: Comprehensive web research (minimum 10 sources)
+        // Step 1: Comprehensive web research (MINIMUM 10 sources required)
         updateStatus('Conducting comprehensive research across multiple sources...');
-        const exaResults = await searchWithExa(event.title, 15); // Request more sources
+        const exaResults = await searchWithExa(event.title, 15);
+        
         console.log(`Found ${exaResults.length} sources for analysis`);
+        
+        // CRITICAL: Must have at least 10 sources to proceed
+        if (exaResults.length < 10) {
+            const errorMsg = `INSUFFICIENT SOURCES: Found only ${exaResults.length} sources. Minimum 10 credible sources required for statistical analysis.`;
+            updateStatus(errorMsg);
+            document.getElementById('analysisContent').innerHTML = `
+                <div style="padding: 20px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px;">
+                    <p style="color: #991b1b; font-weight: 600; margin-bottom: 8px;">Analysis Cannot Proceed</p>
+                    <p style="color: #7f1d1d; font-size: 13px;">${errorMsg}</p>
+                    <p style="color: #7f1d1d; font-size: 13px; margin-top: 12px;">
+                        Please try again later or choose a different event with more available information.
+                    </p>
+                </div>
+            `;
+            hideAnalysisStatus();
+            return;
+        }
         
         // Display sources immediately
         displaySources(exaResults);
         
-        // Step 2: Advanced multi-stage Claude analysis with research paper methodology
-        updateStatus('Performing advanced statistical analysis with AI...');
+        // Step 2: Advanced multi-stage analysis with research paper methodology
+        updateStatus('Performing advanced statistical analysis with AI using Bayesian inference...');
         await streamAdvancedAnalysis(event, exaResults);
         
     } catch (error) {
         console.error('Analysis error:', error);
         document.getElementById('analysisContent').innerHTML = `
-            <p style="color: #000000;">Analysis encountered an error. Please refresh the page.</p>
+            <p style="color: #991b1b;">Analysis encountered an error. Please refresh the page.</p>
         `;
+        hideAnalysisStatus();
     }
 }
 
@@ -86,44 +106,42 @@ async function searchWithExa(query, numResults = 15) {
 }
 
 async function streamAdvancedAnalysis(event, exaResults) {
-    const eventIntel = extractEventIntelligence(event.title);
-    const prompt = buildAdvancedAnalysisPrompt(event, exaResults, eventIntel);
+    const prompt = buildAdvancedAnalysisPrompt(event, exaResults);
     
     try {
-        if (typeof puter === 'undefined') {
-            throw new Error('Puter.js not loaded');
-        }
-        
         const analysisEl = document.getElementById('analysisContent');
         analysisEl.innerHTML = '';
         
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model: "claude-sonnet-4-20250514",
+                max_tokens: 4000,
+                messages: [
+                    { role: "user", content: prompt }
+                ],
+            })
+        });
+
+        const data = await response.json();
         let fullText = '';
         
-        const stream = await puter.ai.chat(prompt, {
-            model: 'claude-sonnet-4-20250514',
-            stream: true
-        });
-        
-        for await (const chunk of stream) {
-            if (chunk.text) {
-                fullText += chunk.text;
-                analysisEl.innerHTML = formatAnalysisText(fullText);
-            }
+        if (data.content && data.content.length > 0) {
+            fullText = data.content.map(item => item.text || '').join('\n');
+            analysisEl.innerHTML = formatAnalysisText(fullText);
+            
+            // Parse predictions and metrics
+            const analysis = parseStreamedResponse(fullText);
+            displayPredictions(analysis.predictions);
+            displayModelInsight(analysis.insight);
+            displayAnalysisMetrics(analysis);
+            
+            updateStatus('Analysis complete - Multi-source statistical synthesis finished');
+            setTimeout(hideAnalysisStatus, 2000);
         }
-        
-        // Parse predictions and create visualizations
-        const analysis = parseStreamedResponse(fullText);
-        displayPredictions(analysis.predictions);
-        displayModelInsight(analysis.insight);
-        
-        // Create sophisticated charts
-        createAdvancedCharts(analysis);
-        
-        updateStatus('Analysis complete');
-        setTimeout(() => {
-            const statusEl = document.getElementById('analysisStatus');
-            if (statusEl) statusEl.style.display = 'none';
-        }, 2000);
         
     } catch (error) {
         console.error('Claude error:', error);
@@ -131,62 +149,7 @@ async function streamAdvancedAnalysis(event, exaResults) {
     }
 }
 
-function extractEventIntelligence(title) {
-    const titleLower = title.toLowerCase();
-    let eventType = 'general';
-    let entities = [];
-    let context = '';
-    
-    // Sports event detection
-    if (titleLower.match(/\bvs\b|\bat\b|game|match|championship|bowl|playoff|finals?|tournament/)) {
-        eventType = 'sports';
-        const vsMatch = title.match(/(.+?)\s+(?:vs\.?|at)\s+(.+?)(?:\s|$|\?)/i);
-        if (vsMatch) {
-            entities = [vsMatch[1].trim(), vsMatch[2].trim()];
-        }
-        if (titleLower.includes('champion') || titleLower.includes('bowl') || titleLower.includes('cup')) {
-            eventType = 'championship';
-            context = 'Championship event - analyze historical performance, team strength, head-to-head records';
-        } else {
-            context = 'Sports match - consider recent form, injuries, home advantage, historical matchups';
-        }
-    } 
-    // Political event detection
-    else if (titleLower.match(/election|president|senate|congress|poll|vote|campaign|nominee/)) {
-        eventType = 'political';
-        context = 'Political event - analyze polling data, historical trends, demographic factors, campaign momentum';
-    } 
-    // Financial/market detection
-    else if (titleLower.match(/bitcoin|btc|eth|stock|price|\$|usd|market|trading|inflation|fed|rate/)) {
-        eventType = 'financial';
-        context = 'Financial prediction - consider market trends, technical indicators, sentiment, macroeconomic factors';
-    }
-    // Weather/climate
-    else if (titleLower.match(/weather|hurricane|storm|temperature|rain|snow|climate/)) {
-        eventType = 'weather';
-        context = 'Weather prediction - analyze meteorological models, historical patterns, current conditions';
-    }
-    // Entertainment/awards
-    else if (titleLower.match(/oscar|emmy|grammy|award|nominee|win|movie|film|album/)) {
-        eventType = 'entertainment';
-        context = 'Entertainment prediction - consider expert reviews, box office, streaming data, previous award patterns';
-    }
-    // Technology/product
-    else if (titleLower.match(/release|launch|announce|iphone|product|tech|software|app/)) {
-        eventType = 'technology';
-        context = 'Technology prediction - analyze company patterns, market readiness, supply chain, competitor moves';
-    }
-    // General binary
-    else {
-        eventType = 'binary';
-        entities = ['Yes', 'No'];
-        context = 'Binary outcome - evaluate evidence for and against, consider base rates and precedents';
-    }
-    
-    return { type: eventType, entities, context, title };
-}
-
-function buildAdvancedAnalysisPrompt(event, exaResults, eventIntel) {
+function buildAdvancedAnalysisPrompt(event, exaResults) {
     // Build comprehensive source context (minimum 10 sources)
     const topSources = exaResults.slice(0, Math.max(10, exaResults.length));
     const sources = topSources.map((result, i) => 
@@ -196,11 +159,6 @@ Published: ${result.publishedDate || 'Recent'}
 Content: ${(result.text || '').substring(0, 1200)}
 ---`
     ).join('\n\n');
-    
-    let entityGuidance = '';
-    if (eventIntel.entities.length > 0) {
-        entityGuidance = `\nIDENTIFIED OUTCOMES: ${eventIntel.entities.join(', ')}`;
-    }
     
     // Advanced prompt based on MIRAI research paper methodology
     return `You are a professional forecasting analyst using rigorous statistical methods and multi-source evidence synthesis.
@@ -214,8 +172,6 @@ CRITICAL REQUIREMENTS:
 
 EVENT DETAILS:
 Title: ${event.title}
-Type: ${eventIntel.type}${entityGuidance}
-Context: ${eventIntel.context}
 Market Data: Volume ${event.volume}, 24h Vol ${event.volume24h}, Liquidity ${event.liquidity}
 Closes: ${event.closeDate}
 
@@ -271,8 +227,8 @@ Worst case scenario (probability: Z%): [description]
 \`\`\`json
 {
   "predictions": [
-    {"outcome": "${eventIntel.entities[0] || 'Outcome 1'}", "probability": 0.XX, "confidence": "High/Medium/Low"},
-    {"outcome": "${eventIntel.entities[1] || 'Outcome 2'}", "probability": 0.XX, "confidence": "High/Medium/Low"}
+    {"outcome": "Yes", "probability": 0.XX, "confidence": "High/Medium/Low"},
+    {"outcome": "No", "probability": 0.XX, "confidence": "High/Medium/Low"}
   ],
   "insight": "Single most important factor affecting outcome",
   "confidence": "High|Medium|Low",
@@ -305,7 +261,8 @@ function parseStreamedResponse(text) {
                 insight: parsed.insight || 'Analysis complete',
                 confidence: parsed.confidence || 'Medium',
                 base_rate: parsed.base_rate || 0.5,
-                key_uncertainty: parsed.key_uncertainty || 'Multiple factors'
+                key_uncertainty: parsed.key_uncertainty || 'Multiple factors',
+                sources_cited: parsed.sources_cited || 0
             };
         }
     } catch (error) {
@@ -318,21 +275,21 @@ function parseStreamedResponse(text) {
             { outcome: 'No', probability: 0.5, confidence: 'Medium' }
         ],
         insight: 'See detailed analysis above',
-        confidence: 'Medium'
+        confidence: 'Medium',
+        sources_cited: 0
     };
 }
 
 function formatAnalysisText(text) {
     let displayText = text.replace(/```json[\s\S]*?```/g, '').trim();
-    displayText = displayText.replace(/\*\*(.*?)\*\*/g, '<h4>$1</h4>');
+    displayText = displayText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     
     const paragraphs = displayText.split('\n\n').filter(p => p.trim());
     
     return paragraphs.map(p => {
-        if (p.includes('<h4>')) {
+        if (p.includes('<strong>')) {
             return p;
         }
-        // Preserve line breaks within paragraphs
         return `<p>${p.replace(/\n/g, '<br>')}</p>`;
     }).join('');
 }
@@ -342,7 +299,10 @@ function displayPredictions(predictions) {
     container.innerHTML = predictions.map(pred => `
         <div class="table-row">
             <span class="row-label">${escapeHtml(pred.outcome)}</span>
-            <span class="row-value">${(pred.probability * 100).toFixed(0)}%</span>
+            <span class="row-value">
+                ${(pred.probability * 100).toFixed(0)}%
+                <span class="confidence-badge">(${pred.confidence})</span>
+            </span>
         </div>
     `).join('');
 }
@@ -351,11 +311,30 @@ function displayModelInsight(insight) {
     document.getElementById('modelInsightText').textContent = insight;
 }
 
+function displayAnalysisMetrics(analysis) {
+    if (analysis.sources_cited >= 10) {
+        const verifiedEl = document.getElementById('sourcesVerified');
+        verifiedEl.style.display = 'flex';
+        document.getElementById('sourcesCount').textContent = 
+            `${analysis.sources_cited} sources analyzed`;
+    }
+    
+    const metricsEl = document.getElementById('analysisMetrics');
+    metricsEl.style.display = 'block';
+    
+    document.getElementById('baseRate').textContent = 
+        analysis.base_rate ? `${(analysis.base_rate * 100).toFixed(0)}%` : '--';
+    document.getElementById('confidenceLevel').textContent = 
+        analysis.confidence || '--';
+    document.getElementById('keyUncertainty').textContent = 
+        analysis.key_uncertainty ? analysis.key_uncertainty.substring(0, 30) + '...' : '--';
+}
+
 function displaySources(exaResults) {
     const container = document.getElementById('sourcesList');
     const sources = exaResults.slice(0, 15);
     
-    document.getElementById('sourcesCount').textContent = sources.length;
+    document.getElementById('totalSources').textContent = sources.length;
     
     container.innerHTML = sources.map((source, i) => `
         <div class="source-card">
@@ -373,113 +352,17 @@ function displaySources(exaResults) {
     `).join('');
 }
 
-function createAdvancedCharts(analysis) {
-    const predictions = analysis.predictions || [];
-    
-    // Main probability chart
-    createProbabilityChart(predictions);
-}
-
-function createProbabilityChart(predictions) {
-    const container = document.getElementById('mainChart');
-    container.innerHTML = '<div id="chartCanvas"></div>';
-    
-    // Generate time series data showing probability evolution
-    const categories = ['30d ago', '20d ago', '10d ago', '5d ago', 'Today'];
-    const series = predictions.map(pred => {
-        const finalProb = pred.probability * 100;
-        return {
-            name: pred.outcome,
-            data: generateProbabilityTrend(finalProb, 5)
-        };
-    });
-    
-    const options = {
-        series: series,
-        chart: {
-            type: 'line',
-            height: 350,
-            toolbar: { show: false },
-            animations: {
-                enabled: true,
-                easing: 'easeinout',
-                speed: 800
-            },
-            fontFamily: 'Manrope, sans-serif'
-        },
-        stroke: {
-            curve: 'smooth',
-            width: 3
-        },
-        colors: ['#000000', '#6b7280', '#9ca3af'],
-        xaxis: {
-            categories: categories,
-            labels: {
-                style: {
-                    colors: '#6b7280',
-                    fontSize: '12px',
-                    fontFamily: 'Manrope, sans-serif'
-                }
-            }
-        },
-        yaxis: {
-            min: 0,
-            max: 100,
-            labels: {
-                formatter: (v) => v.toFixed(0) + '%',
-                style: {
-                    colors: '#6b7280',
-                    fontSize: '12px',
-                    fontFamily: 'Manrope, sans-serif'
-                }
-            }
-        },
-        legend: {
-            show: true,
-            position: 'top',
-            fontFamily: 'Manrope, sans-serif',
-            labels: {
-                colors: '#000000'
-            }
-        },
-        tooltip: {
-            y: {
-                formatter: (v) => v.toFixed(1) + '%'
-            }
-        },
-        grid: {
-            borderColor: '#e5e7eb',
-            strokeDashArray: 3
-        }
-    };
-    
-    const chart = new ApexCharts(document.querySelector("#chartCanvas"), options);
-    chart.render();
-}
-
-function generateProbabilityTrend(finalProb, points) {
-    const data = [];
-    const baseProb = 50;
-    
-    for (let i = 0; i < points; i++) {
-        const progress = i / (points - 1);
-        // Smooth sigmoid-like curve
-        const smoothing = Math.pow(progress, 0.7);
-        const noise = (Math.random() - 0.5) * 3;
-        const value = baseProb + (finalProb - baseProb) * smoothing + noise;
-        data.push(parseFloat(Math.max(0, Math.min(100, value)).toFixed(1)));
-    }
-    
-    // Ensure last point is exact
-    data[points - 1] = parseFloat(finalProb.toFixed(1));
-    return data;
-}
-
 function updateStatus(message) {
-    const el = document.getElementById('analysisStatus');
-    if (el) {
-        const textSpan = el.querySelector('span:last-child');
-        if (textSpan) textSpan.textContent = message;
+    const statusEl = document.getElementById('statusMessage');
+    if (statusEl) {
+        statusEl.textContent = message;
+    }
+}
+
+function hideAnalysisStatus() {
+    const statusEl = document.getElementById('analysisStatus');
+    if (statusEl) {
+        statusEl.style.display = 'none';
     }
 }
 
