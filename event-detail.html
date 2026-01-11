@@ -108,13 +108,25 @@
 
             <!-- Right Column: Analysis -->
             <div class="right-column">
-                <!-- Analysis Status -->
+                <!-- Analysis Status - Perplexity Style -->
                 <div id="analysisStatus" class="analysis-status">
-                    <div class="status-header">
-                        <div class="spinner"></div>
-                        <span class="status-text">Analyzing Event</span>
+                    <div class="thinking-section">
+                        <div class="thinking-header">
+                            <div class="thinking-icon">●</div>
+                            <span class="thinking-text">Thinking</span>
+                        </div>
+                        <div id="thinkingContent" class="thinking-content"></div>
                     </div>
-                    <div id="statusMessage" class="status-message">Initializing analysis...</div>
+                    
+                    <div class="searching-section" id="searchingSection" style="display: none;">
+                        <div class="section-label">Searching</div>
+                        <div id="searchQueries" class="search-queries"></div>
+                    </div>
+                    
+                    <div class="reviewing-section" id="reviewingSection" style="display: none;">
+                        <div class="section-label">Reviewing <span id="reviewingLabel">sources</span></div>
+                        <div id="reviewingSources" class="reviewing-sources"></div>
+                    </div>
                 </div>
 
                 <!-- Statistical Analysis -->
