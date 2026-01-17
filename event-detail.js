@@ -64,6 +64,14 @@ function setupConversation() {
     const sendBtn = document.getElementById('sendQuestionBtn');
     
     if (questionInput && sendBtn) {
+        // Auto-resize textarea
+        const autoResize = () => {
+            questionInput.style.height = 'auto';
+            questionInput.style.height = `${Math.min(questionInput.scrollHeight, 120)}px`;
+        };
+        
+        questionInput.addEventListener('input', autoResize);
+        
         const sendQuestion = async () => {
             const question = questionInput.value.trim();
             if (!question) return;
@@ -71,6 +79,7 @@ function setupConversation() {
             // Add user message
             addMessageToConversation('user', question);
             questionInput.value = '';
+            questionInput.style.height = 'auto';
             sendBtn.disabled = true;
             
             // Get AI response
@@ -80,7 +89,7 @@ function setupConversation() {
         };
         
         sendBtn.addEventListener('click', sendQuestion);
-        questionInput.addEventListener('keypress', (e) => {
+        questionInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendQuestion();
