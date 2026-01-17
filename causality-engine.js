@@ -115,18 +115,26 @@ class CausalityEngine {
             // Advanced NLP extraction
             const extractedData = this.extractEntitiesAndRelationships(source.text || '', source, idx);
             
-            // Add entities
+            // Add entities with source attribution
             extractedData.entities.forEach(entity => {
                 const entityId = this.getOrCreateEntity(entity, nodes, idx);
                 if (entityId) {
                     // Connect entity to source with multiple relationship types
                     const entityNode = nodes.get(entityId);
                     if (entityNode) {
-                        // Store source reference in entity properties
+                        // Store source reference in entity properties with full metadata
                         if (!entityNode.properties.sources) {
                             entityNode.properties.sources = [];
                         }
-                        entityNode.properties.sources.push(sourceId);
+                        entityNode.properties.sources.push({
+                            sourceId: sourceId,
+                            sourceTitle: source.title || `Source ${idx + 1}`,
+                            sourceUrl: source.url || '',
+                            sourceType: source.source || 'Unknown',
+                            relevance: source.relevanceScore || 0.5,
+                            extractionMethod: entity.method || 'NLP',
+                            confidence: entity.confidence || 0.6
+                        });
                         
                         // Multiple connections from source to entity
                         edges.push({
@@ -137,7 +145,9 @@ class CausalityEngine {
                             weight: entity.confidence || 0.6,
                             properties: {
                                 extractionMethod: entity.method || 'NLP',
-                                sourceIdx: idx
+                                sourceIdx: idx,
+                                sourceTitle: source.title || `Source ${idx + 1}`,
+                                sourceUrl: source.url || ''
                             }
                         });
                         
@@ -149,7 +159,9 @@ class CausalityEngine {
                             weight: (entity.confidence || 0.6) * 0.9,
                             properties: {
                                 extractionMethod: entity.method || 'NLP',
-                                sourceIdx: idx
+                                sourceIdx: idx,
+                                sourceTitle: source.title || `Source ${idx + 1}`,
+                                sourceUrl: source.url || ''
                             }
                         });
                         
@@ -162,7 +174,9 @@ class CausalityEngine {
                                 weight: entity.importance,
                                 properties: {
                                     importance: entity.importance,
-                                    sourceIdx: idx
+                                    sourceIdx: idx,
+                                    sourceTitle: source.title || `Source ${idx + 1}`,
+                                    sourceUrl: source.url || ''
                                 }
                             });
                         }
@@ -170,13 +184,13 @@ class CausalityEngine {
                 }
             });
 
-            // Add relationships
+            // Add relationships with full source attribution
             extractedData.relationships.forEach(rel => {
                 const sourceEntityId = this.getOrCreateEntity(rel.source, nodes, idx);
                 const targetEntityId = this.getOrCreateEntity(rel.target, nodes, idx);
                 
                 if (sourceEntityId && targetEntityId) {
-                    // Main relationship
+                    // Main relationship with source metadata
                     edges.push({
                         source: sourceEntityId,
                         target: targetEntityId,
@@ -187,18 +201,26 @@ class CausalityEngine {
                             temporal: rel.temporal,
                             context: rel.context,
                             extractionMethod: 'NLP',
-                            sourceIdx: idx
+                            sourceIdx: idx,
+                            sourceTitle: source.title || `Source ${idx + 1}`,
+                            sourceUrl: source.url || '',
+                            sourceType: source.source || 'Unknown'
                         }
                     });
                     
-                    // Connect both entities to source
+                    // Connect both entities to source with attribution
                     edges.push({
                         source: sourceId,
                         target: sourceEntityId,
                         relationship: 'MENTIONS',
                         strength: 0.7,
                         weight: 0.7,
-                        properties: { sourceIdx: idx, relationshipContext: rel.type }
+                        properties: { 
+                            sourceIdx: idx, 
+                            relationshipContext: rel.type,
+                            sourceTitle: source.title || `Source ${idx + 1}`,
+                            sourceUrl: source.url || ''
+                        }
                     });
                     
                     edges.push({
@@ -207,7 +229,12 @@ class CausalityEngine {
                         relationship: 'MENTIONS',
                         strength: 0.7,
                         weight: 0.7,
-                        properties: { sourceIdx: idx, relationshipContext: rel.type }
+                        properties: { 
+                            sourceIdx: idx, 
+                            relationshipContext: rel.type,
+                            sourceTitle: source.title || `Source ${idx + 1}`,
+                            sourceUrl: source.url || ''
+                        }
                     });
                     
                     // Connect relationship to source
@@ -219,7 +246,9 @@ class CausalityEngine {
                         weight: rel.confidence * 0.8,
                         properties: {
                             describesRelationship: rel.type,
-                            sourceIdx: idx
+                            sourceIdx: idx,
+                            sourceTitle: source.title || `Source ${idx + 1}`,
+                            sourceUrl: source.url || ''
                         }
                     });
                 }
@@ -362,25 +391,30 @@ class CausalityEngine {
             }
         });
 
-        // Concepts and topics (noun phrases)
+        // Concepts and topics (noun phrases) - improved filtering for coherence
         const conceptPatterns = [
-            /\b(?:the|a|an)\s+([a-z]+(?:\s+[a-z]+){0,3})\s+(?:of|in|for|that|which)/g,
-            /\b([A-Z][a-z]+(?:\s+[a-z]+){1,3})\s+(?:policy|strategy|plan|program|initiative)/g,
-            /\b(?:increased|decreased|rising|falling)\s+([a-z]+(?:\s+[a-z]+){0,2})/g
+            /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\s+(?:policy|strategy|plan|program|initiative|regulation|law|bill|act|proposal)/g,
+            /\b(?:increased?|decreased?|rising|falling|growing|declining)\s+([a-z]+(?:\s+[a-z]+){0,2})\s+(?:rate|level|price|value|demand|supply)/g,
+            /\b([A-Z][a-z]+(?:\s+[a-z]+){1,3})\s+(?:market|economy|industry|sector|trend|forecast|prediction)/g,
+            /\b(?:the|a|an)\s+([a-z]{4,}(?:\s+[a-z]{4,}){1,2})\s+(?:of|in|for)\s+(?:the|a|an)?\s*([A-Z][a-z]+(?:\s+[a-z]+){0,2})/g
         ];
 
         conceptPatterns.forEach(pattern => {
             let match;
             while ((match = pattern.exec(text)) !== null) {
-                const concept = match[1];
-                if (concept.length > 3 && !this.isStopWord(concept)) {
-                    entities.push({
-                        text: concept,
-                        type: 'Concept',
-                        confidence: 0.6,
-                        importance: 0.5,
-                        method: 'pattern'
-                    });
+                let concept = match[1] || match[0];
+                // Filter for meaningful concepts only
+                if (concept && concept.length > 4 && !this.isStopWord(concept) && this.isMeaningfulConcept(concept)) {
+                    concept = this.cleanEntity(concept);
+                    if (concept.length > 4 && concept.length < 50) {
+                        entities.push({
+                            text: concept,
+                            type: 'Concept',
+                            confidence: 0.65,
+                            importance: 0.6,
+                            method: 'pattern'
+                        });
+                    }
                 }
             }
         });
@@ -832,8 +866,32 @@ class CausalityEngine {
      * Check if word is a stop word
      */
     isStopWord(word) {
-        const stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'];
+        const stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'this', 'that', 'these', 'those', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can'];
         return stopWords.includes(word.toLowerCase());
+    }
+
+    /**
+     * Check if concept is meaningful (not random words)
+     */
+    isMeaningfulConcept(concept) {
+        const text = concept.toLowerCase();
+        // Filter out common meaningless patterns
+        const meaninglessPatterns = [
+            /^(the|a|an|this|that|these|those)\s+/,
+            /\s+(the|a|an|this|that|these|those)$/,
+            /^(is|are|was|were|be|been|being|have|has|had|do|does|did|will|would|could|should|may|might|must|can)$/,
+            /^(it|they|we|you|he|she|him|her|them|us)$/,
+            /^(what|when|where|why|how|which|who)$/
+        ];
+        
+        if (meaninglessPatterns.some(pattern => pattern.test(text))) {
+            return false;
+        }
+        
+        // Must contain at least one meaningful word (4+ chars)
+        const words = text.split(/\s+/);
+        const meaningfulWords = words.filter(w => w.length >= 4 && !this.isStopWord(w));
+        return meaningfulWords.length > 0;
     }
 
     /**
@@ -1051,26 +1109,30 @@ class CausalityEngine {
     }
 
     /**
-     * Generate reasoning for prediction
+     * Generate reasoning for prediction with source attribution
      */
-    generateReasoning(chain, pathNodes, graph) {
+    generateReasoning(chain, pathNodes, graph, sourceInfo = '') {
         if (!pathNodes || pathNodes.length === 0) {
             return 'No causal path identified';
         }
         
         const steps = pathNodes.map((node, idx) => {
             if (!node || !node.label) return '';
+            const sources = node.properties?.sources || [];
+            const sourceRefs = sources.length > 0 ? ` [Sources: ${sources.map(s => s.sourceTitle || `Source ${s.sourceId}`).slice(0, 2).join(', ')}]` : '';
+            
             if (idx === 0) {
-                return `Factor: ${node.label}`;
+                return `Factor: ${node.label}${sourceRefs}`;
             } else if (idx === pathNodes.length - 1) {
-                return `→ Outcome: ${node.label}`;
+                return `→ Outcome: ${node.label}${sourceRefs}`;
             } else {
-                return `→ ${node.label}`;
+                return `→ ${node.label}${sourceRefs}`;
             }
         }).filter(s => s.length > 0).join(' ');
 
         const strength = chain && chain.strength ? (chain.strength * 100).toFixed(1) : '50.0';
-        return `Causal chain: ${steps}. Strength: ${strength}%`;
+        const sourceNote = sourceInfo ? ` Based on evidence from: ${sourceInfo.split('; ').slice(0, 3).join(', ')}.` : '';
+        return `Causal chain: ${steps}. Strength: ${strength}%.${sourceNote}`;
     }
 
     /**
