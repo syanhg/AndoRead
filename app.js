@@ -33,14 +33,22 @@ async function loadMarkets() {
     const error = document.getElementById('error');
     const container = document.getElementById('marketsContainer');
     
+    if (!loading || !error || !container) {
+        console.error('Required DOM elements not found');
+        return;
+    }
+    
     loading.classList.remove('hidden');
     error.classList.add('hidden');
     error.textContent = '';
     container.innerHTML = '';
     
     try {
-        const isLive = document.getElementById('statusToggle').checked;
-        const tagId = document.getElementById('topicFilter').value || currentTagId;
+        const statusToggle = document.getElementById('statusToggle');
+        const topicFilter = document.getElementById('topicFilter');
+        
+        const isLive = statusToggle ? statusToggle.checked : true;
+        const tagId = (topicFilter && topicFilter.value) || currentTagId || null;
         
         let url = `${API_BASE}/events?limit=100`;
         
@@ -50,8 +58,8 @@ async function loadMarkets() {
             url += `&closed=true`;
         }
         
-        if (tagId) {
-            url += `&tag_id=${tagId}`;
+        if (tagId && tagId !== '') {
+            url += `&tag_id=${encodeURIComponent(tagId)}`;
         }
         
         const response = await fetch(url);
@@ -327,10 +335,12 @@ function formatDate(date) {
 function setupEventListeners() {
     const searchInput = document.getElementById('searchInput');
     
-    // Category button clicks
+    // Category button clicks - Enhanced filtering
     document.querySelectorAll('.category-btn').forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
+            
+            // Update visual state
             document.querySelectorAll('.category-btn').forEach(i => {
                 i.classList.remove('active', 'bg-gray-900', 'text-white');
                 i.classList.add('bg-gray-100', 'text-gray-700');
@@ -338,17 +348,26 @@ function setupEventListeners() {
             item.classList.add('active', 'bg-gray-900', 'text-white');
             item.classList.remove('bg-gray-100', 'text-gray-700');
             
+            // Get filter values
             const tagId = item.dataset.tag;
             const category = item.dataset.category;
             
+            // Apply filter
             if (category === 'all') {
                 currentTagId = null;
-                document.getElementById('topicFilter').value = '';
+                const topicFilter = document.getElementById('topicFilter');
+                if (topicFilter) {
+                    topicFilter.value = '';
+                }
             } else if (tagId) {
                 currentTagId = tagId;
-                document.getElementById('topicFilter').value = tagId;
+                const topicFilter = document.getElementById('topicFilter');
+                if (topicFilter) {
+                    topicFilter.value = tagId;
+                }
             }
             
+            // Reload markets with new filter
             loadMarkets();
         });
     });
