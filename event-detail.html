@@ -56,6 +56,148 @@
             font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
             font-size: 0.875rem;
         }
+        
+        /* IDE Style */
+        .ide-container {
+            border: 1px solid #1e1e1e;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #1e1e1e;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+        }
+        
+        .ide-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #252526;
+            border-bottom: 1px solid #3e3e42;
+            padding: 0;
+            height: 35px;
+        }
+        
+        .ide-tabs {
+            display: flex;
+            align-items: center;
+            height: 100%;
+        }
+        
+        .ide-tab {
+            padding: 0 16px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            color: #969696;
+            background: #2d2d30;
+            border-right: 1px solid #3e3e42;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .ide-tab.active {
+            background: #1e1e1e;
+            color: #cccccc;
+        }
+        
+        .ide-actions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0 8px;
+        }
+        
+        .ide-btn {
+            padding: 4px;
+            color: #969696;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .ide-btn:hover {
+            background: #2a2d2e;
+            color: #cccccc;
+        }
+        
+        .ide-content {
+            display: flex;
+            background: #1e1e1e;
+            position: relative;
+        }
+        
+        .ide-line-numbers {
+            background: #252526;
+            color: #858585;
+            padding: 12px 8px;
+            font-size: 12px;
+            line-height: 1.6;
+            text-align: right;
+            user-select: none;
+            min-width: 50px;
+            border-right: 1px solid #3e3e42;
+        }
+        
+        .ide-text {
+            flex: 1;
+            overflow-x: auto;
+        }
+        
+        .ide-code {
+            margin: 0;
+            padding: 12px 16px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #d4d4d4;
+            background: transparent;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .ide-code .source {
+            color: #4ec9b0;
+        }
+        
+        .ide-code .stat {
+            color: #ce9178;
+        }
+        
+        .ide-code .number {
+            color: #b5cea8;
+        }
+        
+        .ide-code .keyword {
+            color: #569cd6;
+        }
+        
+        .ide-code .comment {
+            color: #6a9955;
+            font-style: italic;
+        }
+        
+        .ide-code .string {
+            color: #ce9178;
+        }
+        
+        .ide-code .function {
+            color: #dcdcaa;
+        }
+        
+        .ide-code .section {
+            color: #4ec9b0;
+            font-weight: 600;
+        }
+        
+        .ide-code .highlight {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
     </style>
 </head>
 <body>
@@ -151,23 +293,58 @@
             </div>
         </div>
 
-        <!-- Analysis Content - Cursor Style -->
+        <!-- Analysis Content - IDE Style -->
         <div class="mb-8">
-            <div id="analysisContent" class="prose prose-sm max-w-none text-sm text-gray-700 leading-relaxed" style="font-family: 'Inter', sans-serif;">
-                <p class="text-gray-500">Analyzing event with statistical models...</p>
+            <div id="analysisContent" class="ide-container">
+                <div class="ide-header">
+                    <div class="ide-tabs">
+                        <div class="ide-tab active">analysis.md</div>
+                        <div class="ide-tab">reasoning.log</div>
+                    </div>
+                    <div class="ide-actions">
+                        <button class="ide-btn" title="Copy">
+                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="ide-content">
+                    <div class="ide-line-numbers"></div>
+                    <div class="ide-text">
+                        <pre class="ide-code"><code id="analysisCode">// Analyzing event with statistical models...</code></pre>
+                    </div>
+                </div>
             </div>
             
-            
-            <!-- Statistical Metrics - Minimal -->
-            <div id="statisticalMetrics" class="mt-6 hidden space-y-3 rounded-md border border-gray-200 bg-gray-50/50 p-4">
-                <div class="text-xs font-medium text-gray-500 mb-2">Statistical Analysis</div>
-                <div id="metricsContent" class="space-y-2 text-xs text-gray-600"></div>
+            <!-- Statistical Metrics - IDE Style -->
+            <div id="statisticalMetrics" class="ide-container mt-4 hidden">
+                <div class="ide-header">
+                    <div class="ide-tabs">
+                        <div class="ide-tab active">metrics.json</div>
+                    </div>
+                </div>
+                <div class="ide-content">
+                    <div class="ide-line-numbers"></div>
+                    <div class="ide-text">
+                        <pre class="ide-code"><code id="metricsCode"></code></pre>
+                    </div>
+                </div>
             </div>
             
-            <!-- Key Insight - Minimal -->
-            <div id="insightContainer" class="mt-6 hidden rounded-md border-l border-blue-500/30 bg-blue-50/30 pl-4 py-3">
-                <div class="text-xs font-medium text-gray-500 mb-1">Key Insight</div>
-                <p id="modelInsightText" class="text-sm text-gray-700 leading-relaxed"></p>
+            <!-- Key Insight - IDE Style -->
+            <div id="insightContainer" class="ide-container mt-4 hidden">
+                <div class="ide-header">
+                    <div class="ide-tabs">
+                        <div class="ide-tab active">insight.txt</div>
+                    </div>
+                </div>
+                <div class="ide-content">
+                    <div class="ide-line-numbers"></div>
+                    <div class="ide-text">
+                        <pre class="ide-code"><code id="insightCode"></code></pre>
+                    </div>
+                </div>
             </div>
         </div>
 
