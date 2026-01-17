@@ -1921,12 +1921,41 @@ function displayKnowledgeGraph(graph) {
         .style('background', '#1e1e1e')
         .style('border-radius', '6px');
     
-    // Create force simulation
-    const simulation = d3.forceSimulation(graph.nodes)
-        .force('link', d3.forceLink(graph.edges).id(d => d.id).distance(100))
-        .force('charge', d3.forceManyBody().strength(-300))
+    // Filter graph to only show high-quality nodes and edges
+    const qualityNodes = graph.nodes.filter(n => {
+        if (n.type === 'Event') return true; // Always show event
+        if (n.type === 'Source') return false; // Hide source nodes to reduce clutter
+        // Only show entities with high importance/confidence
+        const importance = n.properties?.importance || 0;
+        const confidence = n.properties?.confidence || 0;
+        return importance >= 0.65 && confidence >= 0.7;
+    });
+    
+    const qualityEdges = graph.edges.filter(e => {
+        // Only show relationships between quality nodes
+        const sourceNode = qualityNodes.find(n => n.id === e.source);
+        const targetNode = qualityNodes.find(n => n.id === e.target);
+        if (!sourceNode || !targetNode) return false;
+        
+        // Only show high-confidence relationships
+        const strength = e.strength || 0.5;
+        const relType = (e.relationship || e.type || '').toLowerCase();
+        
+        // Prioritize causal relationships
+        if (relType.includes('cause') || relType.includes('influence') || relType.includes('affect')) {
+            return strength >= 0.7;
+        }
+        
+        // Other relationships need higher threshold
+        return strength >= 0.8;
+    }).slice(0, 50); // Limit to top 50 relationships
+    
+    // Create force simulation with filtered data
+    const simulation = d3.forceSimulation(qualityNodes)
+        .force('link', d3.forceLink(qualityEdges).id(d => d.id).distance(80)) // Closer nodes
+        .force('charge', d3.forceManyBody().strength(-200)) // Weaker repulsion
         .force('center', d3.forceCenter(width / 2, height / 2))
-        .force('collision', d3.forceCollide().radius(30));
+        .force('collision', d3.forceCollide().radius(d => (d.size || 8) + 5)); // Smaller collision radius
     
     // Create arrows for directed edges - support more relationship types
     const markerTypes = ['causes', 'influences', 'informs', 'affects', 'predicts', 'prevents'];
@@ -1937,8 +1966,8 @@ function displayKnowledgeGraph(graph) {
         .attr('viewBox', '0 -5 10 10')
         .attr('refX', 25)
         .attr('refY', 0)
-        .attr('markerWidth', 6)
-        .attr('markerHeight', 6)
+        .attr('markerWidth', 4) // Smaller arrows
+        .attr('markerHeight', 4)
         .attr('orient', 'auto')
         .append('path')
         .attr('d', 'M0,-5L10,0L0,5')
@@ -1950,10 +1979,10 @@ function displayKnowledgeGraph(graph) {
             return '#4ec9b0';
         });
     
-    // Draw links
+    // Draw links (using filtered edges)
     const link = svg.append('g')
         .selectAll('line')
-        .data(graph.edges)
+        .data(qualityEdges)
         .enter().append('line')
         .attr('stroke', d => {
             const relType = (d.relationship || d.type || '').toLowerCase();
@@ -1965,7 +1994,7 @@ function displayKnowledgeGraph(graph) {
             if (relType.includes('depend') || relType.includes('require')) return '#dcdcaa';
             return '#858585';
         })
-        .attr('stroke-width', d => Math.sqrt(d.strength || 0.5) * 3)
+        .attr('stroke-width', d => Math.sqrt(d.strength || 0.5) * 1.5) // Thinner lines
         .attr('stroke-opacity', 0.6)
         .attr('marker-end', d => {
             const relType = (d.relationship || d.type || '').toLowerCase();
@@ -1976,13 +2005,17 @@ function displayKnowledgeGraph(graph) {
             return 'url(#informs)';
         });
     
-    // Add relationship labels on edges
+    // Add relationship labels on edges (only for key relationships)
     const linkLabel = svg.append('g')
         .selectAll('text')
-        .data(graph.edges)
+        .data(qualityEdges.filter(e => {
+            const relType = (e.relationship || e.type || '').toLowerCase();
+            // Only show labels for causal relationships to reduce clutter
+            return relType.includes('cause') || relType.includes('influence') || relType.includes('affect');
+        }))
         .enter().append('text')
         .attr('class', 'edge-label')
-        .attr('font-size', '9px')
+        .attr('font-size', '8px') // Smaller font
         .attr('fill', '#b5cea8')
         .attr('text-anchor', 'middle')
         .attr('pointer-events', 'none')
@@ -2004,34 +2037,50 @@ function displayKnowledgeGraph(graph) {
             return `${relType}\nFrom: ${sourceNode?.label || d.source}\nTo: ${targetNode?.label || d.target}\nStrength: ${((d.strength || 0.5) * 100).toFixed(1)}%${sourceInfo}`;
         });
     
-    // Draw nodes
+    // Draw nodes (using filtered nodes)
     const node = svg.append('g')
         .selectAll('circle')
-        .data(graph.nodes)
+        .data(qualityNodes)
         .enter().append('circle')
         .attr('r', d => d.size || 15)
         .attr('fill', d => d.color || '#4ec9b0')
         .attr('stroke', '#fff')
-        .attr('stroke-width', 2)
+        .attr('stroke-width', 1) // Thinner stroke
         .call(d3.drag()
             .on('start', dragstarted)
             .on('drag', dragged)
             .on('end', dragended));
     
-    // Add labels
+    // Add labels (only for important nodes to reduce clutter)
     const label = svg.append('g')
         .selectAll('text')
-        .data(graph.nodes)
+        .data(qualityNodes.filter(n => {
+            // Only show labels for event and high-importance entities
+            if (n.type === 'Event') return true;
+            const importance = n.properties?.importance || 0;
+            return importance >= 0.75;
+        }))
         .enter().append('text')
-        .text(d => d.label)
-        .attr('font-size', '11px')
+        .text(d => d.label.length > 25 ? d.label.substring(0, 22) + '...' : d.label)
+        .attr('font-size', '9px') // Smaller font
         .attr('fill', '#d4d4d4')
-        .attr('dx', d => (d.size || 15) + 5)
-        .attr('dy', 4);
+        .attr('dx', d => (d.size || 8) + 3)
+        .attr('dy', 3);
     
     // Add tooltips
     node.append('title')
-        .text(d => `${d.label}\nType: ${d.type}\n${d.relevance ? `Relevance: ${d.relevance.toFixed(2)}` : ''}`);
+        .text(d => {
+            const importance = d.properties?.importance || 0;
+            const confidence = d.properties?.confidence || 0;
+            const sources = d.properties?.sources || [];
+            let tooltip = `${d.label}\nType: ${d.type}`;
+            if (importance > 0) tooltip += `\nImportance: ${(importance * 100).toFixed(0)}%`;
+            if (confidence > 0) tooltip += `\nConfidence: ${(confidence * 100).toFixed(0)}%`;
+            if (sources.length > 0) {
+                tooltip += `\nSources: ${sources.slice(0, 2).map(s => s.sourceTitle || s.sourceId).join(', ')}`;
+            }
+            return tooltip;
+        });
     
     // Update positions on simulation tick
     simulation.on('tick', () => {
