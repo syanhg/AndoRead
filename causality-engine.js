@@ -73,7 +73,7 @@ class CausalityEngine {
             id: eventId,
             label: event.title,
             type: 'Event',
-            size: 30,
+            size: 20, // Smaller event node
             color: '#4ec9b0',
             properties: {
                 volume: event.volume || 0,
@@ -90,7 +90,7 @@ class CausalityEngine {
                 id: sourceId,
                 label: source.title?.substring(0, 50) || `Source ${idx + 1}`,
                 type: 'Source',
-                size: 15,
+                size: 8, // Smaller source nodes
                 color: '#569cd6',
                 properties: {
                     url: source.url,
@@ -115,8 +115,16 @@ class CausalityEngine {
             // Advanced NLP extraction
             const extractedData = this.extractEntitiesAndRelationships(source.text || '', source, idx);
             
+            // Filter entities: only keep high-quality, relevant ones
+            const qualityEntities = extractedData.entities.filter(e => 
+                (e.confidence || 0) >= 0.7 && 
+                (e.importance || 0) >= 0.6 &&
+                e.text && e.text.length >= 5 && e.text.length <= 40 &&
+                !this.isRandomWord(e.text)
+            ).slice(0, 5); // Limit to top 5 entities per source
+            
             // Add entities with source attribution
-            extractedData.entities.forEach(entity => {
+            qualityEntities.forEach(entity => {
                 const entityId = this.getOrCreateEntity(entity, nodes, idx);
                 if (entityId) {
                     // Connect entity to source with multiple relationship types
@@ -184,8 +192,17 @@ class CausalityEngine {
                 }
             });
 
+            // Filter relationships: only keep high-confidence, meaningful ones
+            const qualityRelationships = extractedData.relationships.filter(rel =>
+                (rel.confidence || 0) >= 0.75 &&
+                rel.source && rel.source.text && rel.source.text.length >= 5 &&
+                rel.target && rel.target.text && rel.target.text.length >= 5 &&
+                !this.isRandomWord(rel.source.text) &&
+                !this.isRandomWord(rel.target.text)
+            ).slice(0, 3); // Limit to top 3 relationships per source
+            
             // Add relationships with full source attribution
-            extractedData.relationships.forEach(rel => {
+            qualityRelationships.forEach(rel => {
                 const sourceEntityId = this.getOrCreateEntity(rel.source, nodes, idx);
                 const targetEntityId = this.getOrCreateEntity(rel.target, nodes, idx);
                 
@@ -254,9 +271,10 @@ class CausalityEngine {
                 }
             });
 
-            // Connect key entities to event
-            extractedData.entities
-                .filter(e => e.importance > 0.7)
+            // Connect key entities to event (only high-importance ones)
+            qualityEntities
+                .filter(e => (e.importance || 0) > 0.75 && (e.confidence || 0) > 0.75)
+                .slice(0, 2) // Limit to top 2 key entities per source
                 .forEach(entity => {
                     const entityId = this.getEntityId(entity);
                     if (entityId && nodes.has(entityId)) {
@@ -391,27 +409,32 @@ class CausalityEngine {
             }
         });
 
-        // Concepts and topics (noun phrases) - improved filtering for coherence
+        // Concepts and topics (noun phrases) - STRICT filtering for high-quality entities only
         const conceptPatterns = [
-            /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\s+(?:policy|strategy|plan|program|initiative|regulation|law|bill|act|proposal)/g,
-            /\b(?:increased?|decreased?|rising|falling|growing|declining)\s+([a-z]+(?:\s+[a-z]+){0,2})\s+(?:rate|level|price|value|demand|supply)/g,
-            /\b([A-Z][a-z]+(?:\s+[a-z]+){1,3})\s+(?:market|economy|industry|sector|trend|forecast|prediction)/g,
-            /\b(?:the|a|an)\s+([a-z]{4,}(?:\s+[a-z]{4,}){1,2})\s+(?:of|in|for)\s+(?:the|a|an)?\s*([A-Z][a-z]+(?:\s+[a-z]+){0,2})/g
+            // Only extract specific, meaningful concepts
+            /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\s+(?:policy|strategy|plan|program|initiative|regulation|law|bill|act|proposal|reform|legislation)/g,
+            /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\s+(?:market|economy|industry|sector|trend|forecast|prediction|analysis|report)/g,
+            /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\s+(?:election|vote|campaign|candidate|nominee|president|governor|senator)/g,
+            /\b(?:increased?|decreased?|rising|falling|growing|declining|surged?|plunged?)\s+([a-z]{5,}(?:\s+[a-z]{4,}){0,1})\s+(?:rate|level|price|value|demand|supply|support|opposition)/g
         ];
 
         conceptPatterns.forEach(pattern => {
             let match;
             while ((match = pattern.exec(text)) !== null) {
                 let concept = match[1] || match[0];
-                // Filter for meaningful concepts only
-                if (concept && concept.length > 4 && !this.isStopWord(concept) && this.isMeaningfulConcept(concept)) {
+                // STRICT filtering: must be meaningful, not random, and properly formatted
+                if (concept && 
+                    concept.length >= 5 && concept.length <= 35 &&
+                    !this.isStopWord(concept) && 
+                    this.isMeaningfulConcept(concept) &&
+                    !this.isRandomWord(concept)) {
                     concept = this.cleanEntity(concept);
-                    if (concept.length > 4 && concept.length < 50) {
+                    if (concept.length >= 5 && concept.length <= 35 && !this.isRandomWord(concept)) {
                         entities.push({
                             text: concept,
                             type: 'Concept',
-                            confidence: 0.65,
-                            importance: 0.6,
+                            confidence: 0.75, // Higher confidence for filtered entities
+                            importance: 0.7,  // Higher importance
                             method: 'pattern'
                         });
                     }
@@ -548,14 +571,21 @@ class CausalityEngine {
             { regex: /([^,\.;]+?)\s+(?:evaluates?|assesses?|analyzes?)\s+([^,\.;]+?)/gi, type: 'EVALUATES', conf: 0.75 }
         ];
 
-        // Process all patterns
+        // Process all patterns with STRICT filtering
         allPatterns.forEach(({ regex, type, conf }) => {
             let match;
             while ((match = regex.exec(sentence)) !== null) {
                 const source = this.cleanEntity(match[1]);
                 const target = match[2] ? this.cleanEntity(match[2]) : this.inferEffect(source, sentence);
                 
-                if (source && target && source.length > 3 && target.length > 3) {
+                // STRICT filtering: both entities must be meaningful and not random
+                if (source && target && 
+                    source.length >= 5 && source.length <= 35 &&
+                    target.length >= 5 && target.length <= 35 &&
+                    !this.isRandomWord(source) && 
+                    !this.isRandomWord(target) &&
+                    this.isMeaningfulConcept(source) &&
+                    this.isMeaningfulConcept(target)) {
                     relationships.push({
                         source: { text: source, type: 'Concept' },
                         target: { text: target, type: 'Concept' },
@@ -648,9 +678,9 @@ class CausalityEngine {
         if (!nodes.has(entityId)) {
             nodes.set(entityId, {
                 id: entityId,
-                label: entity.text.substring(0, 50),
+                label: entity.text.substring(0, 30), // Shorter labels
                 type: entity.type || 'Concept',
-                size: 10 + ((entity.importance || 0.5) * 15),
+                size: 6 + ((entity.importance || 0.5) * 6), // Much smaller nodes (6-12 instead of 10-25)
                 color: this.getColorForType(entity.type || 'Concept'),
                 properties: {
                     confidence: entity.confidence || 0.6,
@@ -892,6 +922,49 @@ class CausalityEngine {
         const words = text.split(/\s+/);
         const meaningfulWords = words.filter(w => w.length >= 4 && !this.isStopWord(w));
         return meaningfulWords.length > 0;
+    }
+
+    /**
+     * Check if text is a random/irrelevant word
+     */
+    isRandomWord(text) {
+        if (!text || text.length < 3) return true;
+        
+        const lowerText = text.toLowerCase().trim();
+        
+        // Common random words to filter
+        const randomWords = [
+            'thing', 'stuff', 'something', 'anything', 'nothing', 'everything',
+            'way', 'time', 'day', 'year', 'month', 'week', 'hour', 'minute',
+            'place', 'area', 'part', 'section', 'piece', 'bit', 'lot',
+            'people', 'person', 'someone', 'anyone', 'everyone', 'nobody',
+            'one', 'two', 'three', 'first', 'second', 'third', 'last',
+            'more', 'most', 'less', 'least', 'many', 'much', 'few', 'little',
+            'other', 'another', 'same', 'different', 'new', 'old', 'good', 'bad',
+            'big', 'small', 'large', 'long', 'short', 'high', 'low',
+            'right', 'left', 'up', 'down', 'here', 'there', 'where',
+            'then', 'now', 'when', 'before', 'after', 'during', 'while',
+            'also', 'too', 'very', 'quite', 'really', 'just', 'only', 'even',
+            'well', 'well', 'still', 'yet', 'already', 'again', 'once', 'twice'
+        ];
+        
+        if (randomWords.includes(lowerText)) return true;
+        
+        // Filter single common words
+        if (lowerText.length < 5 && this.isStopWord(lowerText)) return true;
+        
+        // Filter if it's just numbers or symbols
+        if (/^[\d\s\-\.,%$]+$/.test(lowerText)) return false; // Keep statistics
+        
+        // Must have at least one meaningful word
+        const words = lowerText.split(/\s+/);
+        const meaningfulCount = words.filter(w => 
+            w.length >= 5 && 
+            !this.isStopWord(w) && 
+            !randomWords.includes(w)
+        ).length;
+        
+        return meaningfulCount === 0;
     }
 
     /**
