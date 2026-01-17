@@ -10,29 +10,22 @@ async function init() {
 }
 
 async function loadTags() {
-    const topicFilter = document.getElementById('topicFilter');
-    if (!topicFilter) return;
-    
-    // Use the same categories as the buttons
-    const categories = [
-        { value: '', label: 'All' },
-        { value: '2', label: 'Politics' },
-        { value: '7', label: 'Sports' },
-        { value: '21', label: 'Crypto' },
-        { value: '18', label: 'Finance' },
-        { value: '11', label: 'Geopolitics' },
-        { value: '20', label: 'Tech' },
-        { value: '13', label: 'Culture' },
-        { value: '14', label: 'Economy' },
-        { value: '15', label: 'Climate' }
-    ];
-    
-    categories.forEach(category => {
-        const option = document.createElement('option');
-        option.value = category.value;
-        option.textContent = category.label;
-        topicFilter.appendChild(option);
-    });
+    try {
+        const response = await fetch(`${API_BASE}/tags?limit=100`);
+        const tags = await response.json();
+        const topicFilter = document.getElementById('topicFilter');
+        
+        if (Array.isArray(tags)) {
+            tags.forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag.id;
+                option.textContent = tag.label;
+                topicFilter.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading tags:', error);
+    }
 }
 
 async function loadMarkets() {
@@ -210,7 +203,15 @@ function createMarketCard(event) {
         <div class="relative h-48 w-full overflow-hidden rounded-t-xl bg-gradient-to-br from-gray-100 to-gray-50">
             ${imageUrl ? `<img src="${imageUrl}" alt="${escapeHtml(event.title)}" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" onerror="this.style.display='none'">` : ''}
             <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
-            <div class="absolute top-3 right-3">
+            <!-- Liquid Glass Effect -->
+            <div class="glass-container">
+                <div class="glass-effect-backdrop"></div>
+                <div class="glass-effect top"></div>
+                <div class="glass-effect bottom"></div>
+                <div class="glass-effect left"></div>
+                <div class="glass-effect right"></div>
+            </div>
+            <div class="absolute top-3 right-3 z-10">
                 <span class="inline-flex items-center gap-1.5 rounded-full ${isLive ? 'bg-green-500 text-white' : 'bg-gray-600 text-white'} px-2.5 py-1 text-[10px] font-medium shadow-sm">
                     <span class="h-1.5 w-1.5 rounded-full ${isLive ? 'bg-white animate-pulse' : 'bg-current'}"></span>
                     ${isLive ? 'LIVE' : 'CLOSED'}
