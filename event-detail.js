@@ -6,6 +6,7 @@ let isAnalyzing = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     setupSearch();
+    setupIDETabs();
     // Wait for Puter to load
     if (typeof puter === 'undefined') {
         console.error('Puter not loaded, retrying...');
@@ -14,6 +15,31 @@ document.addEventListener('DOMContentLoaded', () => {
         loadEventData();
     }
 });
+
+function setupIDETabs() {
+    const tabs = document.querySelectorAll('.ide-tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const tabName = tab.dataset.tab;
+            
+            // Update active tab
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            
+            // Show/hide content
+            const analysisContentDiv = document.querySelector('#analysisContent .ide-content:first-of-type');
+            const summaryContentDiv = document.getElementById('summaryContent');
+            
+            if (tabName === 'analysis') {
+                if (analysisContentDiv) analysisContentDiv.classList.remove('hidden');
+                if (summaryContentDiv) summaryContentDiv.classList.add('hidden');
+            } else if (tabName === 'summary') {
+                if (analysisContentDiv) analysisContentDiv.classList.add('hidden');
+                if (summaryContentDiv) summaryContentDiv.classList.remove('hidden');
+            }
+        });
+    });
+}
 
 let currentEventData = null;
 
@@ -155,10 +181,10 @@ async function performAIAnalysis(event, isUpdate = false) {
     } catch (error) {
         console.error('Analysis error:', error);
         if (!isUpdate) {
-        document.getElementById('analysisContent').innerHTML = `
-            <p style="color: #ef4444;"><strong>Error:</strong> ${error.message}</p>
-                <p style="color: #6b7280;">Retrying with available sources...</p>
-        `;
+        const codeEl = document.getElementById('analysisCode');
+        if (codeEl) {
+            codeEl.innerHTML = `<span class="comment">// Error: ${escapeHtml(error.message)}</span>\n<span class="comment">// Retrying with available sources...</span>`;
+        }
         }
         
         // Fallback to basic predictions
@@ -704,8 +730,10 @@ async function runAIAnalysis(event, allSources) {
         }
         
         console.log('Calling puter.ai.chat with streaming...');
-        const analysisEl = document.getElementById('analysisContent');
-        analysisEl.innerHTML = '<p style="color: #6b7280;">AI is analyzing real-time sources...</p>';
+        const codeEl = document.getElementById('analysisCode');
+        if (codeEl) {
+            codeEl.innerHTML = '<span class="comment">// AI is analyzing real-time sources...</span>';
+        }
         
         let fullText = '';
         let hasStarted = false;
@@ -794,17 +822,24 @@ async function runAIAnalysis(event, allSources) {
 
 async function runFallbackAnalysis(event, allSources) {
     console.log('Running fallback analysis with statistical methods...');
-    const analysisEl = document.getElementById('analysisContent');
     
     // Analyze sources locally with enhanced statistical methods
     const analysis = analyzeSourcesLocally(event, allSources);
     
-    // Display analysis in minimal format
-    analysisEl.innerHTML = `
-        <p class="mb-3">${analysis.context}</p>
-        <p class="mb-3">${analysis.factors}</p>
-        <p class="text-gray-600">${analysis.rationale}</p>
-    `;
+    // Display analysis in IDE format
+    const codeEl = document.getElementById('analysisCode');
+    if (codeEl) {
+        const fallbackText = `// Fallback Statistical Analysis\n\n${analysis.context}\n\n${analysis.factors}\n\n${analysis.rationale}\n\n// Insight: ${analysis.insight}`;
+        codeEl.innerHTML = formatIDE(fallbackText);
+        
+        // Update line numbers
+        const lineCount = (fallbackText.match(/\n/g) || []).length + 1;
+        const lineNumbers = Array.from({ length: lineCount }, (_, i) => i + 1).join('\n');
+        const lineNumbersEl = document.getElementById('analysisLineNumbers');
+        if (lineNumbersEl) {
+            lineNumbersEl.textContent = lineNumbers;
+        }
+    }
     
     displayPredictions(analysis.predictions);
     displayModelInsight(analysis.insight);
@@ -1277,8 +1312,9 @@ function formatAnalysisText(text, analysis) {
         // Also populate summary tab with analysis summary
         const summaryCode = document.getElementById('summaryCode');
         if (summaryCode && sections.evidence) {
-            summaryCode.innerHTML = formatIDE(sections.evidence);
-            const summaryLineCount = sections.evidence.split('\n').length;
+            const summaryFormatted = formatIDE(sections.evidence);
+            summaryCode.innerHTML = summaryFormatted;
+            const summaryLineCount = (summaryFormatted.match(/\n/g) || []).length + 1;
             const summaryLineNumbers = Array.from({ length: summaryLineCount }, (_, i) => i + 1).join('\n');
             const summaryLineNumbersEl = document.getElementById('summaryLineNumbers');
             if (summaryLineNumbersEl) {
@@ -1322,8 +1358,11 @@ function formatAnalysisText(text, analysis) {
     if (codeEl) {
         codeEl.innerHTML = formatted;
         
-        // Update line numbers
-        const lineCount = formatted.split('\n').length;
+        // Update line numbers - count actual lines in the formatted text
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = formatted;
+        const textContent = tempDiv.textContent || formatted.replace(/<[^>]*>/g, '');
+        const lineCount = (textContent.match(/\n/g) || []).length + 1;
         const lineNumbers = Array.from({ length: lineCount }, (_, i) => i + 1).join('\n');
         const lineNumbersEl = document.getElementById('analysisLineNumbers');
         if (lineNumbersEl) {
