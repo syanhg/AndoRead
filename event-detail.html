@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Event Analysis - Predictive Intelligence</title>
+    <title>Advanced Event Analysis - AndoRead</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -55,40 +55,23 @@
     </style>
 </head>
 <body class="bg-background text-foreground">
-    <!-- Header - Enhanced -->
-    <header class="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-        <div class="container flex h-14 items-center justify-between px-6">
-            <div class="flex items-center gap-8">
-                <a href="index.html" class="flex items-center gap-2 text-base font-semibold tracking-tight hover:text-primary transition-colors">
-                    <div class="flex h-6 w-6 items-center justify-center rounded bg-primary text-primary-foreground text-xs font-bold">P</div>
-                    <span class="hidden sm:inline">The Predictive Intelligence Company</span>
-                    <span class="sm:hidden">TPIC</span>
+    <!-- Header - AndoRead Style -->
+    <header class="sticky top-0 z-50 w-full bg-white border-b border-gray-200/50">
+        <div class="container mx-auto px-6 lg:px-8">
+            <div class="flex h-16 items-center justify-between">
+                <!-- Logo - Aligned with Market title -->
+                <a href="index.html" class="text-2xl font-medium text-gray-900 tracking-tight" style="font-family: 'Inter', sans-serif; font-weight: 500;">
+                    AndoRead
                 </a>
-                <nav class="hidden md:flex items-center gap-1">
-                    <a href="index.html" class="inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                        Events
-                    </a>
-                    <a href="community.html" class="inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        Community
-                    </a>
-                </nav>
-            </div>
-            <div class="flex flex-1 items-center justify-end gap-3">
-                <div class="relative w-full max-w-xs">
-                    <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                
+                <!-- Search Bar - Top Right -->
+                <div class="relative w-full max-w-sm">
+                    <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
-                    <input type="text" id="searchInput" placeholder="Find events..." 
-                        class="h-9 w-full rounded-md border border-input bg-background/50 px-9 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:bg-background transition-all" />
-                    <kbd class="pointer-events-none absolute right-3 top-1/2 hidden h-5 -translate-y-1/2 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                        <span class="text-xs">⌘</span>F
-                    </kbd>
+                    <input type="text" id="searchInput" placeholder="Search Markets" 
+                        class="h-10 w-full rounded-lg border border-gray-200 bg-gray-50/50 pl-10 pr-4 text-sm text-gray-600 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300 transition-all" 
+                        style="font-family: 'Inter', sans-serif;" />
                 </div>
             </div>
         </div>
@@ -129,131 +112,105 @@
             </button>
         </div>
 
-        <!-- Two Column Layout -->
-        <div class="grid gap-5 lg:grid-cols-[380px_1fr]">
-            <!-- Left Column: Prediction -->
-            <div class="space-y-5">
-                <!-- Market Statistics -->
-                <div class="rounded-lg border border-border/50 bg-card text-card-foreground shadow-sm">
-                    <div class="p-5">
-                        <h2 class="mb-4 text-sm font-semibold">Market Statistics</h2>
-                        <div class="grid grid-cols-3 gap-2.5">
-                            <div class="stat-card rounded-md border border-border/50 bg-muted/30 p-2.5 transition-colors hover:bg-muted/50">
-                                <div class="stat-label mb-1">Volume</div>
-                                <div class="stat-value text-base" id="volumeStat">$0</div>
-                            </div>
-                            <div class="stat-card rounded-md border border-border/50 bg-muted/30 p-2.5 transition-colors hover:bg-muted/50">
-                                <div class="stat-label mb-1">24h Vol</div>
-                                <div class="stat-value text-base" id="volume24hStat">$0</div>
-                            </div>
-                            <div class="stat-card rounded-md border border-border/50 bg-muted/30 p-2.5 transition-colors hover:bg-muted/50">
-                                <div class="stat-label mb-1">Liquidity</div>
-                                <div class="stat-value text-base" id="liquidityStat">$0</div>
-                            </div>
-                        </div>
-                    </div>
+        <!-- Main Content - Streamlined Layout -->
+        <div class="space-y-6">
+            <!-- Quick Stats Bar -->
+            <div class="flex flex-wrap items-center gap-4 rounded-lg border border-border/50 bg-card/50 p-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-medium text-muted-foreground">Volume</span>
+                    <span class="text-sm font-semibold" id="volumeStat">$0</span>
                 </div>
-
-                <!-- AI Predictions -->
-                <div class="rounded-lg border border-border/50 bg-card text-card-foreground shadow-sm">
-                    <div class="p-5">
-                        <h2 class="mb-4 text-sm font-semibold">AI Predictions</h2>
-                        <div class="space-y-0">
-                            <div class="flex items-center justify-between border-b border-border/50 px-3 py-2.5 text-xs font-medium text-muted-foreground">
-                                <span>Outcome</span>
-                                <span>Probability</span>
-                            </div>
-                            <div id="predictionRows" class="divide-y divide-border/50"></div>
-                        </div>
-                    </div>
+                <div class="h-4 w-px bg-border"></div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-medium text-muted-foreground">24h Vol</span>
+                    <span class="text-sm font-semibold" id="volume24hStat">$0</span>
                 </div>
-
-                <!-- Key Insight -->
-                <div class="rounded-lg border border-border/50 bg-card text-card-foreground shadow-sm">
-                    <div class="p-5">
-                        <h3 class="mb-3 text-sm font-semibold">Key Insight</h3>
-                        <p id="modelInsightText" class="text-xs text-muted-foreground leading-relaxed">Analyzing event with AI agents...</p>
-                    </div>
+                <div class="h-4 w-px bg-border"></div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-medium text-muted-foreground">Liquidity</span>
+                    <span class="text-sm font-semibold" id="liquidityStat">$0</span>
+                </div>
+                <div class="ml-auto flex items-center gap-3">
+                    <div id="predictionRows" class="flex items-center gap-3"></div>
                 </div>
             </div>
 
-            <!-- Right Column: Analysis -->
-            <div class="space-y-5">
-                <!-- Analysis Status - Perplexity Style -->
-                <div id="analysisStatus" class="rounded-lg border border-border/50 bg-card text-card-foreground shadow-sm">
-                    <div class="p-5 space-y-5">
-                        <div class="space-y-4">
-                            <div class="flex items-center gap-2">
-                                <div class="h-2 w-2 animate-pulse rounded-full bg-primary"></div>
-                                <span class="text-sm font-medium">Thinking</span>
-                            </div>
-                            <div id="thinkingContent" class="pl-6 text-sm text-muted-foreground"></div>
-                        </div>
-                        
-                        <div class="searching-section hidden" id="searchingSection">
-                            <div class="mb-3 text-sm font-medium">Searching</div>
-                            <div id="searchQueries" class="space-y-2"></div>
-                        </div>
-                        
-                        <div class="reviewing-section hidden" id="reviewingSection">
-                            <div class="mb-3 text-sm font-medium">Reviewing <span id="reviewingLabel">sources</span></div>
-                            <div id="reviewingSources" class="space-y-2"></div>
-                        </div>
+            <!-- Analysis Status - Perplexity Style -->
+            <div id="analysisStatus" class="space-y-5">
+                <!-- Thinking Section -->
+                <div class="space-y-3">
+                    <div class="flex items-center gap-2">
+                        <div class="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></div>
+                        <h3 class="text-base font-semibold text-gray-900" style="font-family: 'Inter', sans-serif;">Thinking</h3>
                     </div>
+                    <div id="thinkingContent" class="pl-6 text-sm text-gray-600" style="font-family: 'Inter', sans-serif;"></div>
                 </div>
+                
+                <!-- Searching Section -->
+                <div class="searching-section hidden space-y-3" id="searchingSection">
+                    <h3 class="text-sm font-semibold text-gray-700" style="font-family: 'Inter', sans-serif;">Searching</h3>
+                    <div id="searchQueries" class="space-y-2"></div>
+                </div>
+                
+                <!-- Reviewing Sources Section -->
+                <div class="reviewing-section hidden space-y-3" id="reviewingSection">
+                    <h3 class="text-sm font-semibold text-blue-600" style="font-family: 'Inter', sans-serif;">Reviewing <span id="reviewingLabel">sources</span></h3>
+                    <div id="reviewingSources" class="space-y-2"></div>
+                </div>
+            </div>
 
-                <!-- Statistical Analysis -->
-                <div class="rounded-lg border border-border/50 bg-card text-card-foreground shadow-sm">
-                    <div class="p-5">
-                        <h3 class="mb-4 text-sm font-semibold">Statistical Analysis & Rationale</h3>
-                        <div id="analysisContent" class="prose prose-sm max-w-none text-xs leading-relaxed">
-                            <p class="text-muted-foreground">AI is conducting comprehensive multi-source analysis...</p>
-                        </div>
-                    </div>
+            <!-- Main Analysis Content -->
+            <div class="rounded-lg border border-border/50 bg-card p-6">
+                <div id="analysisContent" class="prose prose-sm max-w-none text-sm leading-relaxed">
+                    <p class="text-muted-foreground">AI is conducting comprehensive multi-source analysis...</p>
                 </div>
+                
+                <!-- Key Insight - Inline -->
+                <div class="mt-6 rounded-md border-l-2 border-primary/50 bg-muted/30 p-4">
+                    <div class="text-xs font-medium text-muted-foreground mb-1.5">Key Insight</div>
+                    <p id="modelInsightText" class="text-sm leading-relaxed">Analyzing event with AI agents...</p>
+                </div>
+            </div>
 
-                <!-- Follow-up Conversation -->
-                <div class="rounded-lg border border-border/50 bg-card text-card-foreground shadow-sm">
-                    <div class="p-5">
-                        <h3 class="mb-4 text-sm font-semibold">Ask Follow-up Questions</h3>
-                        <div id="conversationContainer" class="mb-4 space-y-4 max-h-96 overflow-y-auto">
-                            <div class="flex items-start gap-3">
-                                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">AI</div>
-                                <div class="flex-1 rounded-lg bg-muted p-3 text-sm">
-                                    <p>I've completed the analysis. Feel free to ask me any follow-up questions about this event!</p>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Chat Input - shadcn style -->
-                        <div class="flex items-end gap-2">
-                            <button type="button" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-input bg-background shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                                <span class="sr-only">Add attachment</span>
-                            </button>
-                            <div class="relative flex-1">
-                                <textarea id="questionInput" rows="1" placeholder="Send a message..." 
-                                    class="flex min-h-[36px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-                                    style="max-height: 120px;"></textarea>
-                            </div>
-                            <button id="sendQuestionBtn" type="button" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-input bg-background shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                </svg>
-                                <span class="sr-only">Send message</span>
-                            </button>
+            <!-- Follow-up Conversation - Streamlined -->
+            <div class="rounded-lg border border-border/50 bg-card p-5">
+                <div id="conversationContainer" class="mb-4 space-y-3 max-h-80 overflow-y-auto">
+                    <div class="flex items-start gap-2.5">
+                        <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-medium">AI</div>
+                        <div class="flex-1 rounded-lg bg-muted/50 p-3 text-sm">
+                            <p>I've completed the analysis. Feel free to ask me any follow-up questions about this event!</p>
                         </div>
                     </div>
                 </div>
+                <!-- Chat Input - shadcn style -->
+                <div class="flex items-end gap-2">
+                    <button type="button" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-input bg-background shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span class="sr-only">Add attachment</span>
+                    </button>
+                    <div class="relative flex-1">
+                        <textarea id="questionInput" rows="1" placeholder="Send a message..." 
+                            class="flex min-h-[36px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                            style="max-height: 120px;"></textarea>
+                    </div>
+                    <button id="sendQuestionBtn" type="button" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-input bg-background shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                        <span class="sr-only">Send message</span>
+                    </button>
+                </div>
+            </div>
 
-                <!-- Sources -->
-                <div class="rounded-lg border border-border/50 bg-card text-card-foreground shadow-sm">
-                    <div class="p-5">
-                        <h3 class="mb-4 text-sm font-semibold">Credible Sources (<span id="totalSources" class="text-muted-foreground">0</span>)</h3>
-                        <div id="sourcesList" class="space-y-2.5"></div>
-                    </div>
+            <!-- Sources - Compact Grid -->
+            <div class="rounded-lg border border-border/50 bg-card p-5">
+                <div class="mb-4 flex items-center justify-between">
+                    <h3 class="text-sm font-semibold">Sources</h3>
+                    <span class="text-xs text-muted-foreground" id="totalSources">0 sources</span>
                 </div>
+                <div id="sourcesList" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"></div>
             </div>
         </div>
     </div>
