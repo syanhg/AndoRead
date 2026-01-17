@@ -122,19 +122,9 @@ async function performAIAnalysis(event, isUpdate = false) {
         // Display sources (async for favicons)
         await displaySources(allSources);
         
-        // Step 5.5: Build knowledge graph with causality analysis (background processing)
-        console.log('Building knowledge graph with causality analysis...');
-        const knowledgeGraph = await buildKnowledgeGraph(event, allSources);
-        
-        // Step 5.6: Use causal predictions if available
-        if (knowledgeGraph && knowledgeGraph.metadata && knowledgeGraph.metadata.predictions) {
-            console.log('Using causality-based predictions:', knowledgeGraph.metadata.predictions);
-            displayMainPrediction(knowledgeGraph.metadata.predictions);
-        }
-        
-        // Step 6: AI Analysis with streaming and timeout
+        // Step 6: AI Analysis with streaming and timeout - FAST
         console.log('Starting real-time AI analysis...');
-        const analysisPromise = runAIAnalysis(event, allSources, knowledgeGraph);
+        const analysisPromise = runAIAnalysis(event, allSources);
         const timeoutPromise = new Promise((_, reject) => 
             setTimeout(() => reject(new Error('AI analysis timeout')), 45000)
         );
@@ -209,7 +199,6 @@ const AIRWEAVE_API_KEY = 'e-Dd6QDCHVRQkssDWDu7IN4Xt4CcMXIPJgLQWr4sjZw';
 const AIRWEAVE_BASE_URL = 'https://api.airweave.ai';
 
 // Initialize Causality Engine
-const causalityEngine = new CausalityEngine();
 
 async function searchWithAirweave(query, event) {
     try {
@@ -375,53 +364,55 @@ async function fetchMultipleSources(event) {
     const allSources = [];
     const searchQueries = generateSearchQueries(event);
     
-    // Enhanced: Fetch from diverse real-time sources including Airweave - get at least 30 sources
+    // ULTRA-FAST parallel fetching - like Cursor app speed
+    // All requests fire simultaneously with aggressive timeouts
     const sourcePromises = [
-        searchWithAirweave(event.title, event).catch(() => []),
-        searchWithExa(searchQueries.exa, 8).catch(() => []),
-        searchWithNewsAPI(event.title).catch(() => []),
-        searchWithTavily(event.title).catch(() => []),
-        searchWithSerper(event.title).catch(() => []),
-        searchWithDuckDuckGo(event.title).catch(() => []),
-        searchWithReddit(event.title).catch(() => []),
-        // Additional queries for more sources
-        searchWithExa(`${event.title} analysis`, 5).catch(() => []),
-        searchWithExa(`${event.title} predictions`, 5).catch(() => []),
-        searchWithExa(`${event.title} news`, 5).catch(() => []),
-        searchWithAirweave(`${event.title} market analysis`, event).catch(() => []),
-        searchWithAirweave(`${event.title} latest updates`, event).catch(() => [])
+        searchWithAirweave(event.title, event),
+        searchWithExa(searchQueries.exa, 10),
+        searchWithNewsAPI(event.title),
+        searchWithTavily(event.title),
+        searchWithSerper(event.title),
+        searchWithDuckDuckGo(event.title),
+        searchWithReddit(event.title),
+        // More parallel queries for speed
+        searchWithExa(`${event.title} analysis`, 8),
+        searchWithExa(`${event.title} predictions`, 8),
+        searchWithExa(`${event.title} news`, 8),
+        searchWithAirweave(`${event.title} market analysis`, event),
+        searchWithAirweave(`${event.title} latest updates`, event),
+        searchWithTavily(`${event.title} analysis`),
+        searchWithSerper(`${event.title} predictions`)
     ];
     
-    // Fast parallel fetching - get results as they come
+    // Aggressive timeout - 1.5s per request (Cursor speed)
     const allResults = await Promise.allSettled(
         sourcePromises.map(p => Promise.race([
             p,
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2500))
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1500))
         ]).catch(() => []))
     );
     
+    // Collect all results immediately
     allResults.forEach((result) => {
         if (result.status === 'fulfilled' && Array.isArray(result.value)) {
             allSources.push(...result.value);
         }
     });
     
-    // Fast deduplication with URL normalization
+    // Fast deduplication
     const uniqueSources = deduplicateSources(allSources);
     
-    // Enhanced scoring with multiple factors
+    // Quick scoring and sorting
     return uniqueSources
         .map(source => {
-            // Calculate enhanced relevance score
             let score = source.relevanceScore || 0.5;
             if (source.isRecent) score *= 1.3;
             if (source.source === 'Exa AI' || source.source === 'Tavily AI') score *= 1.2;
             if (source.text && source.text.length > 300) score *= 1.15;
-            if (source.url && (source.url.includes('news') || source.url.includes('reuters') || source.url.includes('bloomberg'))) score *= 1.1;
             return { ...source, relevanceScore: Math.min(1, score) };
         })
         .sort((a, b) => b.relevanceScore - a.relevanceScore)
-        .slice(0, 35); // At least 30 sources for rich graph
+        .slice(0, 50); // More sources for better analysis
 }
 
 function generateSearchQueries(event) {
@@ -784,8 +775,8 @@ async function searchWithSerper(query) {
     }
 }
 
-async function runAIAnalysis(event, allSources, knowledgeGraph = null) {
-    const prompt = buildPrompt(event, allSources, knowledgeGraph);
+async function runAIAnalysis(event, allSources) {
+    const prompt = buildPrompt(event, allSources);
     
     // Update UI immediately
     const reasoningEl = document.getElementById('reasoningContent');
@@ -1067,7 +1058,7 @@ function analyzeSourcesLocally(event, allSources) {
     };
 }
 
-function buildPrompt(event, allSources, knowledgeGraph = null) {
+function buildPrompt(event, allSources) {
     // Advanced context engineering: multi-layer source processing
     // Use all sources (up to 35) for richer analysis
     const sources = allSources.slice(0, 35).map((r, i) => {
@@ -1146,16 +1137,6 @@ Top Themes Across Sources: ${topThemes || 'N/A'}
 REAL-TIME SOURCES (${allSources.length} sources):
 ${sources}
 
-${knowledgeGraph ? `KNOWLEDGE GRAPH & CAUSALITY ANALYSIS:
-Total Nodes: ${knowledgeGraph.nodes.length}
-Total Causal Relationships: ${knowledgeGraph.edges.filter(e => e.type === 'causes').length}
-Key Causal Chains: ${knowledgeGraph.edges.filter(e => e.type === 'causes').slice(0, 5).map(e => {
-    const sourceNode = knowledgeGraph.nodes.find(n => n.id === e.source);
-    const targetNode = knowledgeGraph.nodes.find(n => n.id === e.target);
-    return `${sourceNode?.label || e.source} → ${targetNode?.label || e.target}`;
-}).join(', ')}
-Use this causal structure to inform your predictions.` : ''}
-
 ADVANCED ANALYSIS FRAMEWORK - PROPHET ARENA STYLE CAUSALITY-BASED PREDICTION:
 
 Based on Prophet Arena methodology (https://www.prophetarena.co/research/welcome), you must generate a structured probabilistic forecast that:
@@ -1163,18 +1144,6 @@ Based on Prophet Arena methodology (https://www.prophetarena.co/research/welcome
 2. Provides statistical forecasts with proper calibration
 3. Quantifies uncertainty and confidence
 4. Makes actionable predictions based on real-world information
-
-${knowledgeGraph ? `KNOWLEDGE GRAPH CAUSALITY ANALYSIS:
-Total Nodes: ${knowledgeGraph.nodes.length}
-Total Relationships: ${knowledgeGraph.edges.length}
-Causal Chains: ${knowledgeGraph.metadata?.causalChains?.length || 0}
-Key Causal Relationships: ${knowledgeGraph.edges.filter(e => e.relationship === 'CAUSES' || e.relationship === 'INFLUENCES').slice(0, 10).map(e => {
-    const sourceNode = knowledgeGraph.nodes.find(n => n.id === e.source);
-    const targetNode = knowledgeGraph.nodes.find(n => n.id === e.target);
-    const sourceInfo = e.properties?.sourceTitle ? ` [Source: ${e.properties.sourceTitle}]` : '';
-    return `${sourceNode?.label || e.source} → ${targetNode?.label || e.target}${sourceInfo}`;
-}).join('; ')}
-Use these causal relationships to inform your statistical prediction.` : ''}
 
 STEP 1: CAUSALITY-BASED EVIDENCE GATHERING
    - Examine ALL ${allSources.length} sources and identify causal factors
@@ -1504,7 +1473,7 @@ function displayCleanAnalysis(text, analysis, allSources = null) {
             <ul class="space-y-2">
                 ${analysis.keyFactors.map(factor => `
                     <li class="flex items-start gap-2">
-                        <span class="text-blue-600 mt-1">•</span>
+                        <span class="text-gray-900 mt-1">•</span>
                         <div>
                             <span class="text-sm font-medium text-gray-900">${escapeHtml(factor.factor || 'Factor')}</span>
                             <span class="text-xs text-gray-500 ml-2">(${factor.impact || 'Medium'} impact)</span>
@@ -1699,7 +1668,8 @@ function displayPredictions(predictions) {
 }
 
 
-function displayKnowledgeGraph(graph) {
+// Removed - no longer using knowledge graph
+function _displayKnowledgeGraph(graph) {
     const container = document.getElementById('knowledgeGraph');
     if (!container) return;
     
@@ -1959,29 +1929,36 @@ function resetGraphLayout() {
 
 async function displaySources(allSources) {
     const container = document.getElementById('sourcesList');
-    const sources = allSources.slice(0, 10);
+    const sources = allSources.slice(0, 20); // Show more sources
     
-    document.getElementById('totalSources').textContent = sources.length;
+    document.getElementById('totalSources').textContent = allSources.length;
     
-    // Fetch favicons in parallel for speed
-    const sourcesWithFavicons = await Promise.all(
+    // Fast favicon fetching with timeout
+    const sourcesWithFavicons = await Promise.allSettled(
         sources.map(async (source) => {
-            const favicon = await getFavicon(source.url);
-            return { ...source, favicon };
+            try {
+                const favicon = await Promise.race([
+                    getFavicon(source.url),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 500))
+                ]);
+                return { ...source, favicon, status: 'fulfilled' };
+            } catch {
+                return { ...source, favicon: null, status: 'fulfilled' };
+            }
         })
     );
     
-    container.innerHTML = sourcesWithFavicons.map((source, i) => {
+    const processedSources = sourcesWithFavicons
+        .filter(r => r.status === 'fulfilled')
+        .map(r => r.value);
+    
+    container.innerHTML = processedSources.map((source) => {
         const domain = source.url ? (new URL(source.url).hostname.replace('www.', '') || 'Unknown') : 'AI Source';
         const domainName = domain.split('.')[0];
         
         return `
-        <a href="${source.url || '#'}" target="_blank" rel="noopener" class="group flex items-start gap-2.5 rounded-md border border-gray-200 bg-white p-2.5 transition-colors hover:bg-gray-50">
-            ${source.favicon ? 
-                `<img src="${source.favicon}" alt="${domain}" class="h-5 w-5 shrink-0 rounded" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` : 
-                ''
-            }
-            <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-gray-100 text-gray-600 text-[10px] font-medium" ${source.favicon ? 'style="display:none;"' : ''}>
+        <a href="${source.url || '#'}" target="_blank" rel="noopener" class="group flex items-start gap-2 rounded-md border border-gray-200 p-2.5 transition-colors hover:bg-gray-50">
+            <div class="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-gray-100 text-gray-600 text-[10px] font-medium">
                 ${domainName.charAt(0).toUpperCase()}
             </div>
             <div class="min-w-0 flex-1">
