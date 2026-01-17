@@ -722,102 +722,172 @@ async function searchWithSerper(query) {
 async function runAIAnalysis(event, allSources) {
     const prompt = buildPrompt(event, allSources);
     
-    try {
-        // Check if puter is available
-        if (typeof puter === 'undefined' || !puter.ai || !puter.ai.chat) {
-            console.warn('Puter AI not available, using fallback analysis');
-            return runFallbackAnalysis(event, allSources);
+    // Update UI immediately
+    const codeEl = document.getElementById('analysisCode');
+    if (codeEl) {
+        codeEl.innerHTML = '<span class="comment">// AI is analyzing real-time sources...</span>';
+    }
+    
+    // Try multiple AI services in order
+    const aiServices = [
+        () => tryPuterAI(prompt),
+        () => tryOpenAI(prompt),
+        () => tryAnthropic(prompt),
+        () => tryHuggingFace(prompt)
+    ];
+    
+    for (const tryService of aiServices) {
+        try {
+            const result = await tryService();
+            if (result && result.text) {
+                const fullText = result.text;
+                const parsed = parseResponse(fullText);
+                formatAnalysisText(fullText, parsed, allSources);
+                
+                displayPredictions(parsed.predictions);
+                displayModelInsight(parsed.insight || parsed.reasoning || 'Analysis complete');
+                displayStatisticalMetrics(parsed.metrics);
+                updateLastUpdateTime();
+                return;
+            }
+        } catch (error) {
+            console.warn('AI service failed, trying next...', error);
+            continue;
         }
-        
-        console.log('Calling puter.ai.chat with streaming...');
-        const codeEl = document.getElementById('analysisCode');
-        if (codeEl) {
-            codeEl.innerHTML = '<span class="comment">// AI is analyzing real-time sources...</span>';
-        }
-        
-        let fullText = '';
-        let hasStarted = false;
-        let lastUpdate = Date.now();
-        
-        // Call AI with streaming
-        const stream = await puter.ai.chat(prompt, {
-            model: 'gpt-4',
-            stream: true
-        });
-        
-        // Handle streaming response
+    }
+    
+    // If all AI services fail, use enhanced local analysis
+    console.log('All AI services failed, using enhanced local analysis');
+    return runFallbackAnalysis(event, allSources);
+}
+
+async function tryPuterAI(prompt) {
+    if (typeof puter === 'undefined' || !puter.ai || !puter.ai.chat) {
+        throw new Error('Puter not available');
+    }
+    
+    const stream = await puter.ai.chat(prompt, {
+        model: 'gpt-4',
+        stream: true
+    });
+    
+    let fullText = '';
         if (stream && typeof stream[Symbol.asyncIterator] === 'function') {
             for await (const chunk of stream) {
                 if (chunk && chunk.text) {
-                    hasStarted = true;
                     fullText += chunk.text;
-                    
-                    // Update UI every 100ms to avoid too frequent updates
-                    const now = Date.now();
-                    if (now - lastUpdate > 100) {
-                        const parsed = parseResponse(fullText);
-                        formatAnalysisText(fullText, parsed, allSources);
-                        lastUpdate = now;
-                    }
-                } else if (chunk && typeof chunk === 'string') {
-                    hasStarted = true;
-                    fullText += chunk;
-                    const parsed = parseResponse(fullText);
-                    formatAnalysisText(fullText, parsed, allSources);
+            } else if (chunk && typeof chunk === 'string') {
+                fullText += chunk;
                 }
             }
-            
-            // Final update without loading indicator
-            const parsed = parseResponse(fullText);
-            formatAnalysisText(fullText, parsed, allSources);
         } else if (stream && stream.text) {
-            // Non-streaming response
             fullText = stream.text;
-            const parsed = parseResponse(fullText);
-            formatAnalysisText(fullText, parsed, allSources);
-        } else if (typeof stream === 'string') {
-            // Direct string response
-            fullText = stream;
-            const parsed = parseResponse(fullText);
-            formatAnalysisText(fullText, parsed, allSources);
-        }
-        
-        if (!hasStarted && !fullText) {
-            throw new Error('No response from AI');
-        }
-        
-        console.log('AI analysis complete, parsing...');
-        
-        // Parse and display
-        const analysis = parseResponse(fullText);
-        displayPredictions(analysis.predictions);
-        displayModelInsight(analysis.insight || analysis.reasoning || 'Analysis complete');
-        displayStatisticalMetrics(analysis.metrics);
-        
-        // Update last update time
-        updateLastUpdateTime();
-        
-    } catch (error) {
-        console.error('AI Error:', error);
-        // Fallback to local analysis
-        const result = await runFallbackAnalysis(event, allSources);
-        updateLastUpdateTime();
-        return result;
+    } else if (typeof stream === 'string') {
+        fullText = stream;
     }
+    
+    if (!fullText) throw new Error('No response from Puter');
+    return { text: fullText };
+}
+
+async function tryOpenAI(prompt) {
+    // Try OpenAI API if available (user can add their key)
+    const apiKey = localStorage.getItem('openai_api_key');
+    if (!apiKey) throw new Error('OpenAI API key not set');
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model: 'gpt-4',
+            messages: [{ role: 'user', content: prompt }],
+            stream: false,
+            max_tokens: 4000
+        })
+    });
+    
+    if (!response.ok) throw new Error('OpenAI API failed');
+    const data = await response.json();
+    return { text: data.choices[0]?.message?.content || '' };
+}
+
+async function tryAnthropic(prompt) {
+    // Try Anthropic Claude API if available
+    const apiKey = localStorage.getItem('anthropic_api_key');
+    if (!apiKey) throw new Error('Anthropic API key not set');
+    
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+            model: 'claude-3-opus-20240229',
+            max_tokens: 4000,
+            messages: [{ role: 'user', content: prompt }]
+        })
+    });
+    
+    if (!response.ok) throw new Error('Anthropic API failed');
+    const data = await response.json();
+    return { text: data.content[0]?.text || '' };
+}
+
+async function tryHuggingFace(prompt) {
+    // Try Hugging Face Inference API (free tier available)
+    const apiKey = localStorage.getItem('huggingface_api_key');
+    if (!apiKey) throw new Error('HuggingFace API key not set');
+    
+    const response = await fetch('https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            inputs: prompt,
+            parameters: {
+                max_new_tokens: 2000,
+                return_full_text: false
+            }
+        })
+    });
+    
+    if (!response.ok) throw new Error('HuggingFace API failed');
+    const data = await response.json();
+    return { text: Array.isArray(data) ? data[0]?.generated_text || '' : data.generated_text || '' };
 }
 
 async function runFallbackAnalysis(event, allSources) {
-    console.log('Running fallback analysis with statistical methods...');
+    console.log('Running enhanced local analysis with step-by-step reasoning...');
     
     // Analyze sources locally with enhanced statistical methods
     const analysis = analyzeSourcesLocally(event, allSources);
     
-    // Display analysis in IDE format with sources
-    formatAnalysisText('', { rawText: `Fallback Statistical Analysis\n\n${analysis.context}\n\n${analysis.factors}\n\n${analysis.rationale}\n\nInsight: ${analysis.insight}` }, allSources);
+    // Generate comprehensive step-by-step reasoning
+    const reasoningText = generateStepByStepReasoning(allSources, analysis, '');
     
-    displayPredictions(analysis.predictions);
-    displayModelInsight(analysis.insight);
+    // Create comprehensive analysis text with reasoning
+    const analysisText = `${reasoningText}\n\n## ANALYSIS SUMMARY\n\n${analysis.context}\n\n${analysis.factors}\n\n${analysis.rationale}\n\nInsight: ${analysis.insight}`;
+    
+    // Display analysis in IDE format with sources and reasoning
+    formatAnalysisText(analysisText, { 
+        rawText: analysisText,
+        predictions: analysis.predictions,
+        insight: analysis.insight,
+        metrics: analysis.metrics
+    }, allSources);
+    
+        displayPredictions(analysis.predictions);
+        displayModelInsight(analysis.insight);
     displayStatisticalMetrics(analysis.metrics);
+    
+    updateLastUpdateTime();
     
     return analysis;
 }
@@ -1373,19 +1443,21 @@ function formatAnalysisText(text, analysis, allSources = null) {
         }
     }
     
-    // If still no reasoning, generate it from sources
-    if (!reasoningToShow || reasoningToShow.length < 100) {
-        reasoningToShow = generateStepByStepReasoning(currentSourcesForDisplay, analysis, display);
-        console.log('Generated reasoning from sources, length:', reasoningToShow.length);
-    }
+    // ALWAYS generate step-by-step reasoning from sources (guaranteed to work)
+    // This ensures reasoning is always shown even if AI doesn't provide it
+    const generatedReasoning = generateStepByStepReasoning(
+        currentSourcesForDisplay || [], 
+        analysis || {}, 
+        display || ''
+    );
     
-    // ALWAYS show reasoning - use generated if needed
-    if (reasoningToShow && reasoningToShow.length > 50) {
+    // Use AI reasoning if available and substantial, otherwise use generated
+    if (reasoningToShow && reasoningToShow.length > 200) {
         formatted += formatIDE(reasoningToShow) + '\n\n';
+        console.log('Using AI-provided reasoning');
     } else {
-        // Last resort: generate basic reasoning
-        const basicReasoning = generateStepByStepReasoning(currentSourcesForDisplay || [], analysis || {}, display || '');
-        formatted += formatIDE(basicReasoning) + '\n\n';
+        formatted += formatIDE(generatedReasoning) + '\n\n';
+        console.log('Using generated reasoning from sources, length:', generatedReasoning.length);
     }
     
     formatted += `<span class="comment">─────────────────────────────────────────────</span>\n\n`;
