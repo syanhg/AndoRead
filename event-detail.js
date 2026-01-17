@@ -250,8 +250,8 @@ async function loadEventData() {
 function displayLoadingPredictions() {
     const container = document.getElementById('predictionRows');
     container.innerHTML = `
-        <div class="flex items-center gap-2 rounded-full border border-border/50 bg-muted/30 px-3 py-1.5">
-            <span class="text-xs text-muted-foreground">Analyzing...</span>
+        <div class="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1">
+            <span class="text-xs text-gray-500">Analyzing...</span>
         </div>
     `;
 }
@@ -780,62 +780,136 @@ async function runAIAnalysis(event, allSources) {
 }
 
 async function runFallbackAnalysis(event, allSources) {
-    console.log('Running fallback analysis with available sources...');
+    console.log('Running fallback analysis with statistical methods...');
     const analysisEl = document.getElementById('analysisContent');
     
-    // Analyze sources locally
+    // Analyze sources locally with enhanced statistical methods
     const analysis = analyzeSourcesLocally(event, allSources);
     
-    // Display analysis
+    // Display analysis in minimal format
     analysisEl.innerHTML = `
-        <h4>Real-Time Market Analysis</h4>
-        <p>Based on ${allSources.length} real-time sources, here's the comprehensive analysis:</p>
-        <p><strong>Market Context:</strong> ${analysis.context}</p>
-        <p><strong>Key Factors:</strong> ${analysis.factors}</p>
-        <p><strong>Prediction Rationale:</strong> ${analysis.rationale}</p>
-        <p style="color: #6b7280; font-size: 12px; margin-top: 16px;">
-            Analysis generated from ${allSources.length} sources including news, market data, and expert opinions.
-        </p>
+        <p class="mb-3">${analysis.context}</p>
+        <p class="mb-3">${analysis.factors}</p>
+        <p class="text-gray-600">${analysis.rationale}</p>
     `;
     
     displayPredictions(analysis.predictions);
     displayModelInsight(analysis.insight);
+    displayStatisticalMetrics(analysis.metrics);
     
     return analysis;
 }
 
 function analyzeSourcesLocally(event, allSources) {
-    // Simple local analysis based on sources
-    const yesCount = allSources.filter(s => {
+    // Enhanced statistical analysis with multiple methods
+    
+    // 1. Sentiment Analysis with Weighted Scoring
+    const sentimentScores = allSources.map(s => {
         const text = (s.text || '').toLowerCase();
-        return text.includes('yes') || text.includes('likely') || text.includes('will') || text.includes('expected');
-    }).length;
+        const relevance = s.relevanceScore || 0.5;
+        let score = 0;
+        
+        const positiveTerms = ['yes', 'likely', 'will', 'expected', 'favorable', 'positive', 'optimistic', 'bullish', 'gain', 'rise', 'increase'];
+        const negativeTerms = ['no', 'unlikely', "won't", 'doubt', 'unfavorable', 'negative', 'pessimistic', 'bearish', 'loss', 'fall', 'decrease'];
+        
+        positiveTerms.forEach(term => {
+            if (text.includes(term)) score += 1 * relevance;
+        });
+        negativeTerms.forEach(term => {
+            if (text.includes(term)) score -= 1 * relevance;
+        });
+        
+        return { score, relevance };
+    });
     
-    const noCount = allSources.filter(s => {
-        const text = (s.text || '').toLowerCase();
-        return text.includes('no') || text.includes('unlikely') || text.includes('won\'t') || text.includes('doubt');
-    }).length;
+    const totalSentiment = sentimentScores.reduce((sum, s) => sum + s.score, 0);
+    const weightedAvg = sentimentScores.reduce((sum, s) => sum + (s.score * s.relevance), 0) / 
+                       sentimentScores.reduce((sum, s) => sum + s.relevance, 1);
     
-    const total = yesCount + noCount || 1;
-    const yesProb = yesCount / total;
-    const noProb = noCount / total;
+    // 2. Bayesian Inference
+    const priorYes = 0.5; // Prior probability
+    const evidenceYes = sentimentScores.filter(s => s.score > 0).length;
+    const evidenceNo = sentimentScores.filter(s => s.score < 0).length;
+    const totalEvidence = evidenceYes + evidenceNo || 1;
     
-    // Normalize to sum to 1
-    const sum = yesProb + noProb || 1;
-    const normalizedYes = yesProb / sum;
-    const normalizedNo = noProb / sum;
+    const likelihoodYes = evidenceYes / totalEvidence;
+    const likelihoodNo = evidenceNo / totalEvidence;
     
-    const confidence = allSources.length >= 8 ? 'High' : allSources.length >= 4 ? 'Medium' : 'Low';
+    // Bayesian update: P(Yes|Evidence) = P(Evidence|Yes) * P(Yes) / P(Evidence)
+    const posteriorYes = (likelihoodYes * priorYes) / ((likelihoodYes * priorYes) + (likelihoodNo * (1 - priorYes)));
+    const posteriorNo = 1 - posteriorYes;
+    
+    // 3. Confidence Intervals (95% CI using normal approximation)
+    const n = allSources.length;
+    const p = posteriorYes;
+    const z = 1.96; // 95% confidence
+    const marginError = z * Math.sqrt((p * (1 - p)) / n);
+    const ciLower = Math.max(0, p - marginError);
+    const ciUpper = Math.min(1, p + marginError);
+    
+    // 4. Statistical Significance Test (Chi-square)
+    const expectedYes = totalEvidence * 0.5;
+    const expectedNo = totalEvidence * 0.5;
+    const chiSquare = ((evidenceYes - expectedYes) ** 2 / expectedYes) + 
+                     ((evidenceNo - expectedNo) ** 2 / expectedNo);
+    const isSignificant = chiSquare > 3.84; // p < 0.05 threshold
+    
+    // 5. Monte Carlo Simulation (1000 iterations)
+    const monteCarloResults = [];
+    for (let i = 0; i < 1000; i++) {
+        let simYes = 0;
+        sentimentScores.forEach(s => {
+            const rand = Math.random();
+            const prob = 0.5 + (s.score * 0.1); // Convert score to probability
+            if (rand < prob) simYes++;
+        });
+        monteCarloResults.push(simYes / sentimentScores.length);
+    }
+    const monteCarloMean = monteCarloResults.reduce((a, b) => a + b, 0) / monteCarloResults.length;
+    const monteCarloStd = Math.sqrt(
+        monteCarloResults.reduce((sum, x) => sum + (x - monteCarloMean) ** 2, 0) / monteCarloResults.length
+    );
+    
+    // 6. Final Probability (weighted combination of methods)
+    const bayesianWeight = 0.4;
+    const monteCarloWeight = 0.3;
+    const sentimentWeight = 0.3;
+    
+    const normalizedSentiment = (weightedAvg + 1) / 2; // Normalize to [0, 1]
+    const finalYes = (posteriorYes * bayesianWeight) + 
+                    (monteCarloMean * monteCarloWeight) + 
+                    (normalizedSentiment * sentimentWeight);
+    const finalNo = 1 - finalYes;
+    
+    // 7. Confidence Level based on statistical measures
+    let confidence = 'Low';
+    if (n >= 8 && isSignificant && (ciUpper - ciLower) < 0.3) {
+        confidence = 'High';
+    } else if (n >= 4 && (ciUpper - ciLower) < 0.4) {
+        confidence = 'Medium';
+    }
+    
+    // Generate statistical metrics
+    const metrics = {
+        bayesianPosterior: posteriorYes,
+        confidenceInterval: [ciLower, ciUpper],
+        statisticalSignificance: isSignificant,
+        monteCarloMean: monteCarloMean,
+        monteCarloStd: monteCarloStd,
+        sampleSize: n,
+        chiSquare: chiSquare
+    };
     
     return {
         predictions: [
-            { outcome: 'Yes', probability: normalizedYes, confidence },
-            { outcome: 'No', probability: normalizedNo, confidence }
+            { outcome: 'Yes', probability: finalYes, confidence },
+            { outcome: 'No', probability: finalNo, confidence }
         ],
-        context: `Analyzed ${allSources.length} real-time sources from multiple APIs including news, market analysis, and expert opinions.`,
-        factors: `Sentiment analysis shows ${yesCount > noCount ? 'positive' : yesCount < noCount ? 'negative' : 'mixed'} indicators. Market volume of ${event.volume} suggests ${parseFloat(event.volume.replace(/[^0-9.]/g, '')) > 100000 ? 'high' : 'moderate'} interest.`,
-        rationale: `Based on source analysis, ${normalizedYes > 0.6 ? 'strong indicators point to' : normalizedYes > 0.4 ? 'moderate indicators suggest' : 'limited indicators for'} a "Yes" outcome.`,
-        insight: `Real-time analysis of ${allSources.length} sources indicates ${normalizedYes > 0.55 ? 'favorable' : normalizedYes < 0.45 ? 'unfavorable' : 'uncertain'} conditions.`
+        metrics: metrics,
+        context: `Statistical analysis of ${n} sources using Bayesian inference, Monte Carlo simulation, and confidence intervals.`,
+        factors: `Weighted sentiment: ${weightedAvg > 0 ? 'positive' : weightedAvg < 0 ? 'negative' : 'neutral'} (${weightedAvg.toFixed(2)}). Market volume: ${event.volume}. Statistical significance: ${isSignificant ? 'Yes' : 'No'} (χ²=${chiSquare.toFixed(2)}).`,
+        rationale: `Bayesian posterior probability: ${(posteriorYes * 100).toFixed(1)}%. 95% CI: [${(ciLower * 100).toFixed(1)}%, ${(ciUpper * 100).toFixed(1)}%]. Monte Carlo mean: ${(monteCarloMean * 100).toFixed(1)}% ± ${(monteCarloStd * 100).toFixed(1)}%.`,
+        insight: `Combined statistical analysis indicates ${finalYes > 0.6 ? 'strong' : finalYes > 0.4 ? 'moderate' : 'weak'} evidence for "Yes" outcome with ${confidence.toLowerCase()} confidence.`
     };
 }
 
@@ -852,7 +926,7 @@ Relevance: ${(r.relevanceScore || 0.5).toFixed(2)}
     
     const currentDate = new Date().toISOString().split('T')[0];
     
-    return `You are an expert prediction market analyst. Analyze this event using MULTIPLE REAL-TIME SOURCES and provide accurate probability predictions.
+    return `You are an expert prediction market analyst with advanced statistical training. Analyze this event using STATISTICALLY GROUNDED METHODS and provide rigorous probability predictions.
 
 EVENT: "${event.title}"
 Market Volume: ${event.volume}
@@ -864,37 +938,53 @@ Current Date: ${currentDate}
 REAL-TIME SOURCES (${allSources.length} sources from multiple APIs):
 ${sources}
 
+STATISTICAL ANALYSIS REQUIREMENTS:
+1. Apply Bayesian inference to update prior probabilities with evidence
+2. Calculate 95% confidence intervals for all probability estimates
+3. Perform statistical significance testing (chi-square, t-tests where applicable)
+4. Consider sample size and statistical power
+5. Account for source reliability weights in calculations
+6. Apply Monte Carlo simulation for uncertainty quantification
+7. Use regression analysis if temporal patterns exist
+8. Calculate effect sizes and practical significance
+
 TASK:
-1. Synthesize information from ALL sources above
-2. Consider recency, relevance, and source credibility
-3. Account for market sentiment, volume, and liquidity
-4. Provide probability predictions based on REAL-TIME data
-5. Explain your reasoning citing specific sources
+1. Synthesize information from ALL sources using statistical methods
+2. Apply weighted analysis based on source credibility and recency
+3. Calculate probabilities using Bayesian updating
+4. Provide confidence intervals for all estimates
+5. Test statistical significance of findings
+6. Explain methodology and cite specific sources
 
 Provide your analysis in this format:
 
-First, write 3-4 comprehensive paragraphs analyzing:
-- Current market conditions and sentiment
-- Key factors influencing the outcome
-- Recent developments from the sources
-- Expert opinions and forecasts
-- Statistical trends and patterns
+First, write 2-3 concise paragraphs with statistical rigor:
+- Statistical summary of evidence (sample size, effect sizes)
+- Bayesian posterior probabilities with confidence intervals
+- Significance testing results
+- Key factors with quantified impact
 
 Then provide predictions in this exact JSON format:
 
 \`\`\`json
 {
   "predictions": [
-    {"outcome": "Yes", "probability": 0.XX, "confidence": "High|Medium|Low"},
-    {"outcome": "No", "probability": 0.XX, "confidence": "High|Medium|Low"}
+    {"outcome": "Yes", "probability": 0.XX, "confidence": "High|Medium|Low", "ci_lower": 0.XX, "ci_upper": 0.XX},
+    {"outcome": "No", "probability": 0.XX, "confidence": "High|Medium|Low", "ci_lower": 0.XX, "ci_upper": 0.XX}
   ],
-  "insight": "One sentence key insight summarizing the most important factor",
+  "insight": "One sentence key insight with statistical basis",
   "confidence": "High|Medium|Low",
-  "reasoning": "Brief explanation of the prediction logic"
+  "reasoning": "Brief explanation citing statistical methods used",
+  "metrics": {
+    "sample_size": ${allSources.length},
+    "statistical_significance": true/false,
+    "bayesian_posterior": 0.XX,
+    "confidence_interval_width": 0.XX
+  }
 }
 \`\`\`
 
-Be thorough, cite specific sources by number, and base predictions on REAL-TIME data.`;
+Be statistically rigorous, cite methods, and provide confidence intervals for all estimates.`;
 }
 
 function parseResponse(text) {
@@ -905,7 +995,8 @@ function parseResponse(text) {
             return {
                 predictions: parsed.predictions || [],
                 insight: parsed.insight || 'Analysis complete',
-                confidence: parsed.confidence || 'Medium'
+                confidence: parsed.confidence || 'Medium',
+                metrics: parsed.metrics || null
             };
         }
     } catch (e) {
@@ -919,33 +1010,77 @@ function parseResponse(text) {
             { outcome: 'No', probability: 0.5, confidence: 'Medium' }
         ],
         insight: 'See analysis above',
-        confidence: 'Medium'
+        confidence: 'Medium',
+        metrics: null
     };
 }
 
 function formatAnalysisText(text) {
     let display = text.replace(/```json[\s\S]*?```/g, '').trim();
-    display = display.replace(/\*\*(.*?)\*\*/g, '<h4>$1</h4>');
+    display = display.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>');
     
     const paragraphs = display.split('\n\n').filter(p => p.trim());
     return paragraphs.map(p => {
-        if (p.includes('<h4>')) return p;
-        return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+        return `<p class="mb-3 text-sm text-gray-700 leading-relaxed">${p.replace(/\n/g, '<br>')}</p>`;
     }).join('');
 }
 
 function displayPredictions(predictions) {
     const container = document.getElementById('predictionRows');
     container.innerHTML = predictions.map(pred => `
-        <div class="flex items-center gap-2 rounded-full border border-border/50 bg-muted/30 px-3 py-1.5">
-            <span class="text-xs font-medium">${escapeHtml(pred.outcome)}</span>
-            <span class="text-xs font-semibold text-primary">${(pred.probability * 100).toFixed(0)}%</span>
+        <div class="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1">
+            <span class="text-xs font-medium text-gray-700">${escapeHtml(pred.outcome)}</span>
+            <span class="text-xs font-semibold text-gray-900">${(pred.probability * 100).toFixed(0)}%</span>
+            ${pred.ci_lower && pred.ci_upper ? `<span class="text-[10px] text-gray-500">[${(pred.ci_lower * 100).toFixed(0)}-${(pred.ci_upper * 100).toFixed(0)}%]</span>` : ''}
         </div>
     `).join('');
 }
 
 function displayModelInsight(insight) {
-    document.getElementById('modelInsightText').textContent = insight;
+    const insightContainer = document.getElementById('insightContainer');
+    const insightText = document.getElementById('modelInsightText');
+    if (insightText && insight) {
+        insightText.textContent = insight;
+        insightContainer.classList.remove('hidden');
+    }
+}
+
+function displayStatisticalMetrics(metrics) {
+    if (!metrics) return;
+    
+    const metricsContainer = document.getElementById('statisticalMetrics');
+    const metricsContent = document.getElementById('metricsContent');
+    
+    if (!metricsContainer || !metricsContent) return;
+    
+    metricsContainer.classList.remove('hidden');
+    
+    const items = [];
+    
+    if (metrics.bayesianPosterior !== undefined) {
+        items.push(`Bayesian Posterior: ${(metrics.bayesianPosterior * 100).toFixed(1)}%`);
+    }
+    
+    if (metrics.confidenceInterval) {
+        const [lower, upper] = metrics.confidenceInterval;
+        items.push(`95% CI: [${(lower * 100).toFixed(1)}%, ${(upper * 100).toFixed(1)}%]`);
+    }
+    
+    if (metrics.statisticalSignificance !== undefined) {
+        items.push(`Significance: ${metrics.statisticalSignificance ? 'Yes (p<0.05)' : 'No (p≥0.05)'}`);
+    }
+    
+    if (metrics.monteCarloMean !== undefined) {
+        items.push(`Monte Carlo: ${(metrics.monteCarloMean * 100).toFixed(1)}% ± ${(metrics.monteCarloStd * 100).toFixed(1)}%`);
+    }
+    
+    if (metrics.sampleSize !== undefined) {
+        items.push(`Sample Size: n=${metrics.sampleSize}`);
+    }
+    
+    metricsContent.innerHTML = items.map(item => 
+        `<div class="text-xs text-gray-600">${item}</div>`
+    ).join('');
 }
 
 function displaySources(allSources) {
