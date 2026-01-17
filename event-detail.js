@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-let conversationHistory = [];
 let currentEventData = null;
 
 function setupSearch() {
@@ -55,157 +54,8 @@ function setupSearch() {
         });
     }
     
-    // Setup follow-up conversation
-    setupConversation();
 }
 
-function setupConversation() {
-    const questionInput = document.getElementById('questionInput');
-    const sendBtn = document.getElementById('sendQuestionBtn');
-    
-    if (questionInput && sendBtn) {
-        // Auto-resize textarea
-        const autoResize = () => {
-            questionInput.style.height = 'auto';
-            questionInput.style.height = `${Math.min(questionInput.scrollHeight, 120)}px`;
-        };
-        
-        questionInput.addEventListener('input', autoResize);
-        
-        const sendQuestion = async () => {
-            const question = questionInput.value.trim();
-            if (!question) return;
-            
-            // Add user message
-            addMessageToConversation('user', question);
-            questionInput.value = '';
-            questionInput.style.height = 'auto';
-            sendBtn.disabled = true;
-            
-            // Get AI response
-            await getAIResponse(question);
-            
-            sendBtn.disabled = false;
-        };
-        
-        sendBtn.addEventListener('click', sendQuestion);
-        questionInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendQuestion();
-            }
-        });
-    }
-}
-
-function addMessageToConversation(role, content) {
-    const container = document.getElementById('conversationContainer');
-    if (!container) return;
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'flex items-start gap-3';
-    
-    if (role === 'user') {
-        messageDiv.innerHTML = `
-            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground text-xs font-medium">You</div>
-            <div class="flex-1 rounded-lg bg-primary/10 p-3 text-sm">${escapeHtml(content)}</div>
-        `;
-    } else {
-        messageDiv.innerHTML = `
-            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">AI</div>
-            <div class="flex-1 rounded-lg bg-muted p-3 text-sm">${escapeHtml(content)}</div>
-        `;
-    }
-    
-    container.appendChild(messageDiv);
-    container.scrollTop = container.scrollHeight;
-    
-    conversationHistory.push({ role, content });
-}
-
-async function getAIResponse(question) {
-    if (!currentEventData) {
-        currentEventData = JSON.parse(localStorage.getItem('currentEvent') || '{}');
-    }
-    
-    const container = document.getElementById('conversationContainer');
-    const loadingDiv = document.createElement('div');
-    loadingDiv.className = 'flex items-start gap-3';
-    loadingDiv.innerHTML = `
-        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">AI</div>
-        <div class="flex-1 rounded-lg bg-muted p-3 text-sm">
-            <div class="flex items-center gap-2">
-                <div class="h-2 w-2 animate-pulse rounded-full bg-primary"></div>
-                <span class="text-muted-foreground">Thinking...</span>
-            </div>
-        </div>
-    `;
-    container.appendChild(loadingDiv);
-    container.scrollTop = container.scrollHeight;
-    
-    try {
-        const context = buildConversationContext();
-        const prompt = `You are an AI assistant helping users understand a prediction market event analysis.
-
-EVENT: "${currentEventData.title}"
-${context}
-
-CONVERSATION HISTORY:
-${conversationHistory.slice(-5).map(msg => `${msg.role}: ${msg.content}`).join('\n')}
-
-USER QUESTION: ${question}
-
-Provide a helpful, concise answer based on the analysis and conversation context.`;
-
-        if (typeof puter !== 'undefined' && puter.ai && puter.ai.chat) {
-            const stream = await puter.ai.chat(prompt, { model: 'gpt-4', stream: true });
-            let fullResponse = '';
-            
-            loadingDiv.remove();
-            const responseDiv = document.createElement('div');
-            responseDiv.className = 'flex items-start gap-3';
-            responseDiv.innerHTML = `
-                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">AI</div>
-                <div class="flex-1 rounded-lg bg-muted p-3 text-sm" id="aiResponseText"></div>
-            `;
-            container.appendChild(responseDiv);
-            const responseTextEl = document.getElementById('aiResponseText');
-            
-            if (stream && typeof stream[Symbol.asyncIterator] === 'function') {
-                for await (const chunk of stream) {
-                    if (chunk && chunk.text) {
-                        fullResponse += chunk.text;
-                        responseTextEl.textContent = fullResponse;
-                        container.scrollTop = container.scrollHeight;
-                    }
-                }
-            } else if (stream && stream.text) {
-                fullResponse = stream.text;
-                responseTextEl.textContent = fullResponse;
-            }
-            
-            conversationHistory.push({ role: 'assistant', content: fullResponse });
-        } else {
-            throw new Error('AI not available');
-        }
-    } catch (error) {
-        console.error('AI response error:', error);
-        loadingDiv.remove();
-        addMessageToConversation('assistant', 'I apologize, but I\'m having trouble processing your question right now. Please try again later.');
-    }
-}
-
-function buildConversationContext() {
-    const analysisContent = document.getElementById('analysisContent')?.textContent || '';
-    const predictions = Array.from(document.querySelectorAll('#predictionRows > div')).map(row => {
-        const label = row.querySelector('.row-label')?.textContent || '';
-        const value = row.querySelector('.row-value')?.textContent || '';
-        return `${label}: ${value}`;
-    }).join(', ');
-    
-    return `ANALYSIS SUMMARY: ${analysisContent.substring(0, 500)}
-PREDICTIONS: ${predictions}`;
-}
 
 function updateLastUpdateTime() {
     const lastUpdateEl = document.getElementById('lastUpdate');
@@ -1342,7 +1192,7 @@ async function displaySources(allSources) {
             <div class="min-w-0 flex-1">
                 <div class="mb-0.5 line-clamp-1 text-xs font-medium text-gray-900 group-hover:text-gray-700">
                     ${escapeHtml(source.title)}
-                </div>
+            </div>
                 <div class="text-[10px] text-gray-500">${escapeHtml(domain)}</div>
             </div>
         </a>
