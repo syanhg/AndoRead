@@ -1041,46 +1041,68 @@ STEP 5: REASONING SYNTHESIS
    - Identify key risk factors and edge cases
    - Provide clear, traceable reasoning chain
 
-TASK - PROVIDE STRUCTURED ANALYSIS:
+TASK - PROVIDE STRUCTURED ANALYSIS WITH STEP-BY-STEP REASONING:
 
-## ANALYSIS
+## REASONING PROCESS (Show your thinking step-by-step like Claude/Gemini)
 
-### 1. Evidence Synthesis
-[2-3 paragraphs synthesizing evidence from all ${allSources.length} sources]
-- Cite specific sources by number (e.g., "Source 3, 7, and 12 indicate...")
-- Identify key factors with quantified impact
-- Discuss consensus vs. divergence in sources
-- Highlight temporal patterns and trends
+You MUST show your reasoning process in clear, numbered steps. Each step should show:
+1. What you're thinking about
+2. What evidence you're considering
+3. How you're processing that evidence
+4. What conclusion you're drawing from that step
 
-### 2. Statistical Reasoning
-[1-2 paragraphs explaining statistical methods and results]
-- Apply Bayesian inference: P(Yes|Evidence) = [show calculation]
-- Report 95% confidence intervals: [lower, upper]
-- Chi-square test results: χ² = [value], p = [value], significance = [Yes/No]
-- Monte Carlo simulation: mean = [value] ± [std] (1000 iterations)
-- Effect size: [Cohen's d value]
-- Sample size adequacy: [assessment]
+Format your reasoning like this:
 
-### 3. Multi-Source Integration
-[1 paragraph on how different source types inform the prediction]
-- News sources (${sourceCounts.find(s => s.type.includes('News'))?.count || 0}): [summary]
-- Market analysis (${sourceCounts.find(s => s.type.includes('Market'))?.count || 0}): [summary]
-- Expert opinions: [summary]
-- Social signals: [summary]
-- How these perspectives converge or diverge
+### STEP-BY-STEP REASONING:
 
-### 4. Market Context
-[1 paragraph on market dynamics]
-- Volume/liquidity implications
-- Time-to-close effects
-- Market efficiency considerations
+**Step 1: Initial Evidence Gathering**
+- Examining Source 1, 2, 3... [list sources you're reviewing]
+- Key findings: [what you discover from these sources]
+- Initial assessment: [what this suggests]
 
-### 5. Final Reasoning
-[1 paragraph providing clear, step-by-step reasoning for the final prediction]
-- Step 1: [reasoning step]
-- Step 2: [reasoning step]
-- Step 3: [reasoning step]
-- Conclusion: [final probability with justification]
+**Step 2: Pattern Recognition**
+- Comparing findings across sources [cite specific sources]
+- Consensus identified: [describe consensus]
+- Outliers noted: [describe conflicting evidence]
+- Pattern conclusion: [what pattern emerges]
+
+**Step 3: Statistical Analysis**
+- Applying Bayesian inference: [show your calculation process]
+  - Prior probability: [value]
+  - Evidence from sources: [describe]
+  - Posterior calculation: [show math]
+- Calculating confidence intervals: [show process]
+- Running significance tests: [show results]
+- Statistical conclusion: [what the numbers tell us]
+
+**Step 4: Evidence Weighting**
+- High credibility sources (Sources X, Y, Z): [what they say]
+- Recent sources (Sources A, B, C): [what they indicate]
+- Weighted synthesis: [how you combine them]
+- Weighted conclusion: [what emerges]
+
+**Step 5: Multi-Source Integration**
+- News perspective: [summary from news sources]
+- Market signals: [summary from market sources]
+- Expert opinions: [summary from expert sources]
+- Social sentiment: [summary from social sources]
+- Integration result: [how these combine]
+
+**Step 6: Uncertainty Assessment**
+- Confidence level: [High/Medium/Low]
+- Uncertainty factors: [what creates uncertainty]
+- Risk factors: [what could change the prediction]
+- Final confidence: [justified assessment]
+
+**Step 7: Final Prediction Synthesis**
+- Combining all evidence: [summary of all steps]
+- Probability calculation: [final calculation]
+- Reasoning chain: [clear logical path from evidence to conclusion]
+- Final prediction: [Yes/No with probability and confidence interval]
+
+## ANALYSIS SUMMARY
+
+[2-3 paragraphs synthesizing the complete analysis, referencing the reasoning steps above]
 
 PREDICTIONS (JSON format):
 \`\`\`json
@@ -1111,11 +1133,14 @@ PREDICTIONS (JSON format):
 \`\`\`
 
 CRITICAL REQUIREMENTS:
-- Use chain-of-thought reasoning: show your thinking process step-by-step
-- Cite specific sources by number throughout (e.g., "Source 3 indicates...", "Sources 1, 5, and 8 suggest...")
-- Quantify all claims with statistical measures
-- Be explicit about uncertainty and confidence
-- Show calculations where relevant
+- Show step-by-step reasoning like Claude and Gemini: make your thinking process transparent
+- Number each reasoning step clearly (Step 1, Step 2, etc.)
+- For each step, show: (1) what you're thinking, (2) what evidence you're using, (3) how you're processing it, (4) what you conclude
+- Cite specific sources by number in each step (e.g., "In Step 2, examining Source 3, 7, and 12...")
+- Show your calculations explicitly (don't just state results, show the process)
+- Be explicit about uncertainty, confidence, and risk factors at each step
+- Build a clear logical chain from evidence → analysis → conclusion
+- Make it clear how each step leads to the next
 - Base all predictions on rigorous statistical analysis of real-time data`;
 }
 
@@ -1243,7 +1268,25 @@ function formatAnalysisText(text, analysis) {
     // Format as IDE-style code
     let formatted = '';
     
-    // Build IDE-style formatted text
+    // Build IDE-style formatted text with step-by-step reasoning first
+    if (sections.reasoning) {
+        formatted += `<span class="section">// ===== STEP-BY-STEP REASONING PROCESS =====</span>\n\n`;
+        formatted += formatIDE(sections.reasoning) + '\n\n';
+        formatted += `<span class="comment">─────────────────────────────────────────────</span>\n\n`;
+        
+        // Also populate summary tab with analysis summary
+        const summaryCode = document.getElementById('summaryCode');
+        if (summaryCode && sections.evidence) {
+            summaryCode.innerHTML = formatIDE(sections.evidence);
+            const summaryLineCount = sections.evidence.split('\n').length;
+            const summaryLineNumbers = Array.from({ length: summaryLineCount }, (_, i) => i + 1).join('\n');
+            const summaryLineNumbersEl = document.getElementById('summaryLineNumbers');
+            if (summaryLineNumbersEl) {
+                summaryLineNumbersEl.textContent = summaryLineNumbers;
+            }
+        }
+    }
+    
     if (sections.evidence) {
         formatted += `<span class="section">// ===== EVIDENCE SYNTHESIS =====</span>\n\n`;
         formatted += formatIDE(sections.evidence) + '\n\n';
@@ -1305,6 +1348,14 @@ function formatIDE(text) {
     // Escape HTML
     text = escapeHtml(text);
     
+    // Format step-by-step reasoning headers (like Claude/Gemini)
+    text = text.replace(/\*\*Step (\d+):\s*([^*]+)\*\*/gi, '<span class="function">Step $1: $2</span>');
+    text = text.replace(/Step (\d+):\s*([^\n]+)/gi, '<span class="function">Step $1: $2</span>');
+    
+    // Format reasoning sub-steps
+    text = text.replace(/^(\s*)- ([^\n]+)/gm, '<span class="comment">  →</span> $2');
+    text = text.replace(/^(\s*)• ([^\n]+)/gm, '<span class="comment">  →</span> $2');
+    
     // Format source citations
     text = text.replace(/Source (\d+)/gi, '<span class="source">Source $1</span>');
     text = text.replace(/Sources ([\d,\s]+)/gi, '<span class="source">Sources $1</span>');
@@ -1314,16 +1365,19 @@ function formatIDE(text) {
     text = text.replace(/(\d+\.\d+)/g, '<span class="number">$1</span>');
     
     // Format statistical terms
-    text = text.replace(/(χ²|Chi-square|Bayesian|Monte Carlo|confidence interval|CI|posterior|prior|likelihood)/gi, '<span class="keyword">$1</span>');
+    text = text.replace(/(χ²|Chi-square|Bayesian|Monte Carlo|confidence interval|CI|posterior|prior|likelihood|probability|significance)/gi, '<span class="keyword">$1</span>');
     
-    // Format step-by-step reasoning
-    text = text.replace(/Step (\d+):/gi, '<span class="function">Step $1:</span>');
+    // Format reasoning indicators
+    text = text.replace(/(Examining|Comparing|Applying|Calculating|Assessing|Combining|Conclusion|Initial|Final|Pattern|Evidence|Synthesis)/gi, '<span class="function">$1</span>');
     
     // Format JSON-like structures
     text = text.replace(/(\{[^}]*\}|\[[^\]]*\])/g, '<span class="string">$1</span>');
     
     // Format comments
     text = text.replace(/(\/\/.*$)/gm, '<span class="comment">$1</span>');
+    
+    // Format reasoning separators
+    text = text.replace(/^---$/gm, '<span class="comment">─────────────────────────</span>');
     
     return text;
 }
