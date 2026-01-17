@@ -33,8 +33,8 @@ async function loadMarkets() {
     const error = document.getElementById('error');
     const container = document.getElementById('marketsContainer');
     
-    loading.style.display = 'block';
-    error.style.display = 'none';
+    loading.classList.remove('hidden');
+    error.classList.add('hidden');
     error.textContent = '';
     container.innerHTML = '';
     
@@ -64,8 +64,8 @@ async function loadMarkets() {
         
         if (allEvents.length === 0) {
             error.textContent = 'No markets found. Try different filters.';
-            error.style.display = 'block';
-            loading.style.display = 'none';
+            error.classList.remove('hidden');
+            loading.classList.add('hidden');
             return;
         }
         
@@ -76,9 +76,9 @@ async function loadMarkets() {
     } catch (err) {
         console.error('Fetch error:', err);
         error.textContent = `Unable to load markets. ${err.message}`;
-        error.style.display = 'block';
+        error.classList.remove('hidden');
     } finally {
-        loading.style.display = 'none';
+        loading.classList.add('hidden');
     }
 }
 
@@ -129,11 +129,11 @@ function renderMarkets() {
     const container = document.getElementById('marketsContainer');
     const error = document.getElementById('error');
     container.innerHTML = '';
-    error.style.display = 'none';
+    error.classList.add('hidden');
     
     if (filteredEvents.length === 0) {
         error.textContent = 'No markets match your search criteria';
-        error.style.display = 'block';
+        error.classList.remove('hidden');
         return;
     }
     
@@ -145,7 +145,7 @@ function renderMarkets() {
 
 function createMarketCard(event) {
     const card = document.createElement('div');
-    card.className = 'market-card';
+    card.className = 'group cursor-pointer rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md';
     
     const markets = event.markets || [];
     const mainMarket = markets[0] || {};
@@ -192,49 +192,52 @@ function createMarketCard(event) {
     const numMarkets = markets.length || 1;
     
     card.innerHTML = `
-        <img src="${imageUrl}" class="market-image" alt="${escapeHtml(event.title)}" 
-             onerror="this.style.background='linear-gradient(135deg, #667eea 0%, #764ba2 100%)'; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3C/svg%3E'">
-        <div class="market-content">
-            <h3 class="market-title">${escapeHtml(event.title)}</h3>
+        <div class="relative h-48 w-full overflow-hidden rounded-t-lg bg-gradient-to-br from-primary/20 to-primary/5">
+            ${imageUrl ? `<img src="${imageUrl}" alt="${escapeHtml(event.title)}" class="h-full w-full object-cover" onerror="this.style.display='none'">` : ''}
+        </div>
+        <div class="p-6">
+            <h3 class="mb-4 line-clamp-2 text-lg font-semibold group-hover:text-primary transition-colors">${escapeHtml(event.title)}</h3>
             
-            <div class="market-stats">
-                <div class="stat-item">
-                    <div class="stat-label">Volume</div>
-                    <div class="stat-value">${volume}</div>
+            <div class="mb-4 grid grid-cols-2 gap-3">
+                <div class="rounded-md border bg-muted/50 p-2">
+                    <div class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Volume</div>
+                    <div class="mt-1 text-sm font-semibold">${volume}</div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-label">24h Vol</div>
-                    <div class="stat-value">${volume24hr}</div>
+                <div class="rounded-md border bg-muted/50 p-2">
+                    <div class="text-xs font-medium text-muted-foreground uppercase tracking-wide">24h Vol</div>
+                    <div class="mt-1 text-sm font-semibold">${volume24hr}</div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-label">Liquidity</div>
-                    <div class="stat-value">${liquidity}</div>
+                <div class="rounded-md border bg-muted/50 p-2">
+                    <div class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Liquidity</div>
+                    <div class="mt-1 text-sm font-semibold">${liquidity}</div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-label">Markets</div>
-                    <div class="stat-value">${numMarkets}</div>
+                <div class="rounded-md border bg-muted/50 p-2">
+                    <div class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Markets</div>
+                    <div class="mt-1 text-sm font-semibold">${numMarkets}</div>
                 </div>
             </div>
             
-            <div class="predictions-label">Top predictions:</div>
-            <div class="predictions">
-                ${predictions.map(p => `
-                    <div class="prediction-item">
-                        <div class="prediction-info">
-                            <div class="outcome-label">${escapeHtml(p.outcome)}</div>
-                            <div class="model-name">Market Price</div>
+            <div class="mb-4">
+                <div class="mb-2 text-xs font-medium text-muted-foreground">Top Predictions</div>
+                <div class="space-y-2">
+                    ${predictions.map(p => `
+                        <div class="flex items-center justify-between rounded-md border bg-muted/30 p-2">
+                            <div>
+                                <div class="text-sm font-medium">${escapeHtml(p.outcome)}</div>
+                                <div class="text-xs text-muted-foreground">Market Price</div>
+                            </div>
+                            <div class="text-sm font-semibold">${(p.price * 100).toFixed(0)}%</div>
                         </div>
-                        <div class="percentage">${(p.price * 100).toFixed(0)}%</div>
-                    </div>
-                `).join('')}
+                    `).join('')}
+                </div>
             </div>
             
-            <div class="market-footer">
-                <span class="status-badge ${isLive ? 'live' : 'closed'}">
-                    <span class="status-indicator"></span>
+            <div class="flex items-center justify-between border-t pt-4">
+                <span class="inline-flex items-center gap-2 rounded-full ${isLive ? 'bg-green-100 text-green-800' : 'bg-muted text-muted-foreground'} px-2.5 py-0.5 text-xs font-medium">
+                    <span class="h-1.5 w-1.5 rounded-full ${isLive ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'}"></span>
                     ${isLive ? 'LIVE' : 'CLOSED'}
                 </span>
-                <span class="close-date">${closeText}</span>
+                <span class="text-xs text-muted-foreground">${closeText}</span>
             </div>
         </div>
     `;
@@ -345,11 +348,15 @@ function setupEventListeners() {
         });
     });
     
-    document.querySelectorAll('.nav-item').forEach(item => {
+    document.querySelectorAll('.nav-tab').forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            item.classList.add('active');
+            document.querySelectorAll('.nav-tab').forEach(i => {
+                i.classList.remove('active', 'border-primary', 'text-foreground');
+                i.classList.add('border-transparent', 'text-muted-foreground');
+            });
+            item.classList.add('active', 'border-primary', 'text-foreground');
+            item.classList.remove('border-transparent', 'text-muted-foreground');
             
             const tagId = item.dataset.tag;
             const category = item.dataset.category;
