@@ -158,9 +158,14 @@ async function performAIAnalysis(event, isUpdate = false) {
         // Step 5: Display sources (async for favicons)
         await displaySources(allSources);
         
+        // Step 5.5: Build knowledge graph with causality analysis
+        console.log('Building knowledge graph with causality analysis...');
+        const knowledgeGraph = await buildKnowledgeGraph(event, allSources);
+        displayKnowledgeGraph(knowledgeGraph);
+        
         // Step 6: AI Analysis with streaming and timeout
         console.log('Starting real-time AI analysis...');
-        const analysisPromise = runAIAnalysis(event, allSources);
+        const analysisPromise = runAIAnalysis(event, allSources, knowledgeGraph);
         const timeoutPromise = new Promise((_, reject) => 
             setTimeout(() => reject(new Error('AI analysis timeout')), 45000)
         );
@@ -236,12 +241,232 @@ async function getFavicon(url) {
     }
 }
 
+// Airweave API integration
+const AIRWEAVE_API_KEY = 'e-Dd6QDCHVRQkssDWDu7IN4Xt4CcMXIPJgLQWr4sjZw';
+const AIRWEAVE_BASE_URL = 'https://api.airweave.ai';
+
+async function searchWithAirweave(query, event) {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        
+        // Search Airweave for relevant documents
+        const response = await fetch(`${AIRWEAVE_BASE_URL}/v1/collections/search`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${AIRWEAVE_API_KEY}`
+            },
+            body: JSON.stringify({
+                query: query,
+                collection_id: 'default', // Use default or create one
+                expand_query: true,
+                retrieval_strategy: 'hybrid',
+                temporal_relevance: 0.7,
+                rerank: true,
+                limit: 10
+            }),
+            signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+            throw new Error('Airweave API failed');
+        }
+        
+        const data = await response.json();
+        return (data.results || data.documents || []).map(r => ({
+            title: r.title || r.metadata?.title || '',
+            url: r.url || r.metadata?.url || '',
+            text: r.content || r.text || r.snippet || '',
+            relevanceScore: r.score || r.relevance_score || 0.85,
+            source: 'Airweave',
+            metadata: r.metadata || {}
+        }));
+    } catch (error) {
+        console.error('Airweave search error:', error);
+        return [];
+    }
+}
+
+async function buildKnowledgeGraph(event, allSources) {
+    try {
+        // Use Airweave to analyze causality and build knowledge graph
+        const causalityQuery = `Analyze causal relationships for: ${event.title}. Identify cause-effect chains, dependencies, and predictive factors.`;
+        
+        const response = await fetch(`${AIRWEAVE_BASE_URL}/v1/collections/search`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${AIRWEAVE_API_KEY}`
+            },
+            body: JSON.stringify({
+                query: causalityQuery,
+                collection_id: 'default',
+                expand_query: true,
+                retrieval_strategy: 'hybrid',
+                generate_answer: true,
+                limit: 15
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Airweave causality analysis failed');
+        }
+        
+        const data = await response.json();
+        
+        // Extract entities and relationships from sources
+        const graph = extractCausalGraph(allSources, data, event);
+        return graph;
+    } catch (error) {
+        console.error('Knowledge graph error:', error);
+        // Fallback: build graph from sources locally
+        return buildLocalCausalGraph(allSources, event);
+    }
+}
+
+function extractCausalGraph(sources, airweaveData, event) {
+    const nodes = new Map();
+    const edges = [];
+    
+    // Add event as central node
+    nodes.set(event.id || 'event', {
+        id: event.id || 'event',
+        label: event.title,
+        type: 'event',
+        size: 30,
+        color: '#4ec9b0'
+    });
+    
+    // Extract entities and causal relationships from sources
+    sources.forEach((source, idx) => {
+        const sourceId = `source_${idx}`;
+        nodes.set(sourceId, {
+            id: sourceId,
+            label: source.title.substring(0, 40),
+            type: 'source',
+            size: 15,
+            color: '#569cd6',
+            url: source.url,
+            relevance: source.relevanceScore
+        });
+        
+        // Connect source to event
+        edges.push({
+            source: sourceId,
+            target: event.id || 'event',
+            type: 'informs',
+            strength: source.relevanceScore || 0.5,
+            label: 'informs'
+        });
+        
+        // Extract causal phrases from source text
+        const causalPhrases = extractCausalPhrases(source.text || '');
+        causalPhrases.forEach((phrase, pIdx) => {
+            const causeId = `cause_${idx}_${pIdx}`;
+            const effectId = `effect_${idx}_${pIdx}`;
+            
+            if (phrase.cause && phrase.effect) {
+                if (!nodes.has(causeId)) {
+                    nodes.set(causeId, {
+                        id: causeId,
+                        label: phrase.cause.substring(0, 30),
+                        type: 'factor',
+                        size: 12,
+                        color: '#ce9178'
+                    });
+                }
+                
+                if (!nodes.has(effectId)) {
+                    nodes.set(effectId, {
+                        id: effectId,
+                        label: phrase.effect.substring(0, 30),
+                        type: 'outcome',
+                        size: 12,
+                        color: '#b5cea8'
+                    });
+                }
+                
+                edges.push({
+                    source: causeId,
+                    target: effectId,
+                    type: 'causes',
+                    strength: 0.7,
+                    label: 'causes'
+                });
+                
+                // Connect to event
+                edges.push({
+                    source: causeId,
+                    target: event.id || 'event',
+                    type: 'influences',
+                    strength: 0.6,
+                    label: 'influences'
+                });
+            }
+        });
+    });
+    
+    return {
+        nodes: Array.from(nodes.values()),
+        edges: edges,
+        metadata: {
+            totalSources: sources.length,
+            totalRelations: edges.length
+        }
+    };
+}
+
+function extractCausalPhrases(text) {
+    const phrases = [];
+    const causalPatterns = [
+        /(?:because|due to|as a result of|caused by)\s+([^,\.]+?)(?:\s+(?:will|may|could|leads? to|results? in|causes?|triggers?)\s+([^,\.]+?))?/gi,
+        /([^,\.]+?)\s+(?:will|may|could|leads? to|results? in|causes?|triggers?)\s+([^,\.]+?)/gi,
+        /(?:if|when)\s+([^,\.]+?)(?:\s+then\s+([^,\.]+?))?/gi
+    ];
+    
+    causalPatterns.forEach(pattern => {
+        let match;
+        while ((match = pattern.exec(text)) !== null) {
+            if (match[1] && match[2]) {
+                phrases.push({
+                    cause: match[1].trim(),
+                    effect: match[2].trim()
+                });
+            } else if (match[1]) {
+                phrases.push({
+                    cause: match[1].trim(),
+                    effect: 'outcome'
+                });
+            }
+        }
+    });
+    
+    return phrases.slice(0, 5); // Limit to 5 per source
+}
+
+// Reset graph layout function
+function resetGraphLayout() {
+    const container = document.getElementById('knowledgeGraph');
+    if (container && window.currentGraph) {
+        displayKnowledgeGraph(window.currentGraph);
+    }
+}
+
+function buildLocalCausalGraph(sources, event) {
+    // Fallback: build graph locally from sources
+    return extractCausalGraph(sources, null, event);
+}
+
 async function fetchMultipleSources(event) {
     const allSources = [];
     const searchQueries = generateSearchQueries(event);
     
-    // Enhanced: Fetch from diverse real-time sources in parallel with fast timeouts
+    // Enhanced: Fetch from diverse real-time sources including Airweave
     const sourcePromises = [
+        searchWithAirweave(event.title, event).catch(() => []),
         searchWithExa(searchQueries.exa, 6).catch(() => []),
         searchWithNewsAPI(event.title).catch(() => []),
         searchWithTavily(event.title).catch(() => []),
@@ -719,8 +944,8 @@ async function searchWithSerper(query) {
     }
 }
 
-async function runAIAnalysis(event, allSources) {
-    const prompt = buildPrompt(event, allSources);
+async function runAIAnalysis(event, allSources, knowledgeGraph = null) {
+    const prompt = buildPrompt(event, allSources, knowledgeGraph);
     
     // Update UI immediately
     const codeEl = document.getElementById('analysisCode');
@@ -1005,7 +1230,7 @@ function analyzeSourcesLocally(event, allSources) {
     };
 }
 
-function buildPrompt(event, allSources) {
+function buildPrompt(event, allSources, knowledgeGraph = null) {
     // Advanced context engineering: multi-layer source processing
     const sources = allSources.slice(0, 18).map((r, i) => {
         const text = (r.text || '').replace(/\n+/g, ' ').trim();
@@ -1082,6 +1307,16 @@ Top Themes Across Sources: ${topThemes || 'N/A'}
 
 REAL-TIME SOURCES (${allSources.length} sources):
 ${sources}
+
+${knowledgeGraph ? `KNOWLEDGE GRAPH & CAUSALITY ANALYSIS:
+Total Nodes: ${knowledgeGraph.nodes.length}
+Total Causal Relationships: ${knowledgeGraph.edges.filter(e => e.type === 'causes').length}
+Key Causal Chains: ${knowledgeGraph.edges.filter(e => e.type === 'causes').slice(0, 5).map(e => {
+    const sourceNode = knowledgeGraph.nodes.find(n => n.id === e.source);
+    const targetNode = knowledgeGraph.nodes.find(n => n.id === e.target);
+    return `${sourceNode?.label || e.source} → ${targetNode?.label || e.target}`;
+}).join(', ')}
+Use this causal structure to inform your predictions.` : ''}
 
 ADVANCED ANALYSIS FRAMEWORK - USE CHAIN-OF-THOUGHT REASONING:
 
@@ -1759,6 +1994,150 @@ function displayStatisticalMetrics(metrics) {
     metricsContent.innerHTML = items.map(item => 
         `<div class="text-xs text-gray-600">${item}</div>`
     ).join('');
+}
+
+function displayKnowledgeGraph(graph) {
+    const container = document.getElementById('knowledgeGraph');
+    if (!container) return;
+    
+    if (!graph || !graph.nodes || graph.nodes.length === 0) {
+        container.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #858585; font-size: 13px; font-family: monospace;">// Building knowledge graph from causal relationships...</div>';
+        return;
+    }
+    
+    // Store graph for reset functionality
+    window.currentGraph = graph;
+    
+    // Clear previous graph
+    container.innerHTML = '';
+    
+    // Check if D3 is available
+    if (typeof d3 === 'undefined') {
+        container.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #858585; font-size: 13px; font-family: monospace;">// Loading graph visualization library...</div>';
+        return;
+    }
+    
+    // Create SVG for D3 visualization
+    const width = container.clientWidth || 800;
+    const height = 500;
+    
+    const svg = d3.select(container)
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .style('background', '#1e1e1e')
+        .style('border-radius', '6px');
+    
+    // Create force simulation
+    const simulation = d3.forceSimulation(graph.nodes)
+        .force('link', d3.forceLink(graph.edges).id(d => d.id).distance(100))
+        .force('charge', d3.forceManyBody().strength(-300))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(30));
+    
+    // Create arrows for directed edges
+    svg.append('defs').selectAll('marker')
+        .data(['causes', 'influences', 'informs'])
+        .enter().append('marker')
+        .attr('id', d => d)
+        .attr('viewBox', '0 -5 10 10')
+        .attr('refX', 25)
+        .attr('refY', 0)
+        .attr('markerWidth', 6)
+        .attr('markerHeight', 6)
+        .attr('orient', 'auto')
+        .append('path')
+        .attr('d', 'M0,-5L10,0L0,5')
+        .attr('fill', d => {
+            if (d === 'causes') return '#ce9178';
+            if (d === 'influences') return '#569cd6';
+            return '#4ec9b0';
+        });
+    
+    // Draw links
+    const link = svg.append('g')
+        .selectAll('line')
+        .data(graph.edges)
+        .enter().append('line')
+        .attr('stroke', d => {
+            if (d.type === 'causes') return '#ce9178';
+            if (d.type === 'influences') return '#569cd6';
+            return '#4ec9b0';
+        })
+        .attr('stroke-width', d => Math.sqrt(d.strength || 0.5) * 3)
+        .attr('stroke-opacity', 0.6)
+        .attr('marker-end', d => `url(#${d.type})`);
+    
+    // Draw nodes
+    const node = svg.append('g')
+        .selectAll('circle')
+        .data(graph.nodes)
+        .enter().append('circle')
+        .attr('r', d => d.size || 15)
+        .attr('fill', d => d.color || '#4ec9b0')
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 2)
+        .call(d3.drag()
+            .on('start', dragstarted)
+            .on('drag', dragged)
+            .on('end', dragended));
+    
+    // Add labels
+    const label = svg.append('g')
+        .selectAll('text')
+        .data(graph.nodes)
+        .enter().append('text')
+        .text(d => d.label)
+        .attr('font-size', '11px')
+        .attr('fill', '#d4d4d4')
+        .attr('dx', d => (d.size || 15) + 5)
+        .attr('dy', 4);
+    
+    // Add tooltips
+    node.append('title')
+        .text(d => `${d.label}\nType: ${d.type}\n${d.relevance ? `Relevance: ${d.relevance.toFixed(2)}` : ''}`);
+    
+    // Update positions on simulation tick
+    simulation.on('tick', () => {
+        link
+            .attr('x1', d => d.source.x)
+            .attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x)
+            .attr('y2', d => d.target.y);
+        
+        node
+            .attr('cx', d => d.x)
+            .attr('cy', d => d.y);
+        
+        label
+            .attr('x', d => d.x)
+            .attr('y', d => d.y);
+    });
+    
+    function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+    
+    function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+    
+    function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+}
+
+// Reset graph layout function
+function resetGraphLayout() {
+    const container = document.getElementById('knowledgeGraph');
+    if (container && window.currentGraph) {
+        displayKnowledgeGraph(window.currentGraph);
+    }
 }
 
 async function displaySources(allSources) {
