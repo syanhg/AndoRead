@@ -139,23 +139,12 @@ async function performAIAnalysis(event, isUpdate = false) {
     try {
         console.log('Starting real-time analysis for:', event.title);
         
-        if (!isUpdate) {
-        // Step 1: Show thinking
-        showThinkingPhase(event);
-        }
-        
-        // Step 2: Show searching with multiple sources
-        showSearchingPhase(event);
-        
-        // Step 3: Get sources from multiple real-time sources
+        // Get sources from multiple real-time sources
         console.log('Fetching from multiple real-time sources...');
         const allSources = await fetchMultipleSources(event);
         console.log(`Got ${allSources.length} total sources from multiple APIs`);
         
-        // Step 4: Show reviewing (async for favicons)
-        await showReviewingPhase(allSources);
-        
-        // Step 5: Display sources (async for favicons)
+        // Display sources (async for favicons)
         await displaySources(allSources);
         
         // Step 5.5: Build knowledge graph with causality analysis
@@ -178,14 +167,8 @@ async function performAIAnalysis(event, isUpdate = false) {
         
         await Promise.race([analysisPromise, timeoutPromise]);
         
-        // Hide status after delay (only if not updating)
-        if (!isUpdate) {
-        setTimeout(() => {
-            const statusEl = document.getElementById('analysisStatus');
-                if (statusEl) statusEl.classList.add('hidden');
-        }, 2000);
-        } else {
-            // For updates, show a brief "Updated" indicator
+        // For updates, show a brief "Updated" indicator
+        if (isUpdate) {
             showUpdateIndicator();
         }
         
@@ -498,83 +481,6 @@ function deduplicateSources(sources) {
     return unique;
 }
 
-function showThinkingPhase(event) {
-    document.getElementById('thinkingContent').textContent = 
-        `Analyzing "${event.title}" with AI...`;
-}
-
-function showSearchingPhase(event) {
-    const searchingSection = document.getElementById('searchingSection');
-    searchingSection.classList.remove('hidden');
-    
-    const searchQueries = document.getElementById('searchQueries');
-    searchQueries.innerHTML = ''; // Clear previous queries
-    
-    const queries = [
-        { text: `${event.title.substring(0, 50)} predictions 2026` },
-        { text: `${event.title.substring(0, 50)} latest news` },
-        { text: `${event.title.substring(0, 50)} market analysis` }
-    ];
-    
-    queries.forEach((query, i) => {
-        setTimeout(() => {
-            const el = document.createElement('div');
-            el.className = 'flex items-center gap-2 px-3 py-2 rounded-full bg-gray-100 border border-gray-200';
-            el.style.fontFamily = "'Inter', sans-serif";
-            el.innerHTML = `
-                <svg class="h-3.5 w-3.5 shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <span class="text-sm text-gray-700">${escapeHtml(query.text)}</span>
-            `;
-            searchQueries.appendChild(el);
-        }, i * 150);
-    });
-}
-
-async function showReviewingPhase(exaResults) {
-    const reviewingSection = document.getElementById('reviewingSection');
-    reviewingSection.classList.remove('hidden');
-    
-    const reviewingSources = document.getElementById('reviewingSources');
-    const topSources = exaResults.slice(0, 5);
-    
-    // Fetch favicons in parallel
-    const sourcesWithFavicons = await Promise.all(
-        topSources.map(async (source) => {
-            const favicon = await getFavicon(source.url);
-            return { ...source, favicon };
-        })
-    );
-    
-    sourcesWithFavicons.forEach((source, i) => {
-        setTimeout(() => {
-            const domain = source.url ? new URL(source.url).hostname.replace('www.', '') : 'unknown';
-            const title = source.title || domain;
-            const domainName = domain.split('.')[0];
-            
-            const el = document.createElement('div');
-            el.className = 'flex items-start gap-2.5 p-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors';
-            el.style.fontFamily = "'Inter', sans-serif";
-            
-            el.innerHTML = `
-                ${source.favicon ? 
-                    `<img src="${source.favicon}" alt="${domain}" class="h-6 w-6 shrink-0 rounded" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` : 
-                    ''
-                }
-                <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600 text-[10px] font-medium" ${source.favicon ? 'style="display:none;"' : ''}>
-                    ${domainName.charAt(0).toUpperCase()}
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="text-xs font-medium text-gray-900 mb-0.5 line-clamp-1">${escapeHtml(title)}</div>
-                    <div class="text-[10px] text-gray-500">${escapeHtml(domain)}</div>
-                </div>
-            `;
-            
-            reviewingSources.appendChild(el);
-        }, i * 50); // Faster animation
-    });
-}
 
 async function searchWithExa(query, numResults = 5) {
     try {
