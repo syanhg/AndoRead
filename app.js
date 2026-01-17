@@ -145,7 +145,7 @@ function renderMarkets() {
 
 function createMarketCard(event) {
     const card = document.createElement('div');
-    card.className = 'group cursor-pointer rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md';
+    card.className = 'group card-hover cursor-pointer rounded-lg border border-border/50 bg-card text-card-foreground shadow-sm transition-all hover:border-border hover:shadow-md';
     
     const markets = event.markets || [];
     const mainMarket = markets[0] || {};
@@ -192,52 +192,71 @@ function createMarketCard(event) {
     const numMarkets = markets.length || 1;
     
     card.innerHTML = `
-        <div class="relative h-48 w-full overflow-hidden rounded-t-lg bg-gradient-to-br from-primary/20 to-primary/5">
-            ${imageUrl ? `<img src="${imageUrl}" alt="${escapeHtml(event.title)}" class="h-full w-full object-cover" onerror="this.style.display='none'">` : ''}
+        <div class="relative h-40 w-full overflow-hidden rounded-t-lg bg-gradient-to-br from-primary/10 via-primary/5 to-transparent">
+            ${imageUrl ? `<img src="${imageUrl}" alt="${escapeHtml(event.title)}" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" onerror="this.style.display='none'">` : ''}
+            <div class="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent"></div>
+            <div class="absolute top-3 right-3">
+                <span class="inline-flex items-center gap-1.5 rounded-full ${isLive ? 'bg-green-500/90 text-white backdrop-blur-sm' : 'bg-muted/90 text-muted-foreground backdrop-blur-sm'} px-2 py-0.5 text-[10px] font-medium shadow-sm">
+                    <span class="h-1.5 w-1.5 rounded-full ${isLive ? 'bg-white animate-pulse' : 'bg-current'}"></span>
+                    ${isLive ? 'LIVE' : 'CLOSED'}
+                </span>
+            </div>
         </div>
-        <div class="p-6">
-            <h3 class="mb-4 line-clamp-2 text-lg font-semibold group-hover:text-primary transition-colors">${escapeHtml(event.title)}</h3>
+        <div class="p-5">
+            <h3 class="mb-3 line-clamp-2 text-base font-semibold leading-snug group-hover:text-primary transition-colors">${escapeHtml(event.title)}</h3>
             
-            <div class="mb-4 grid grid-cols-2 gap-3">
-                <div class="rounded-md border bg-muted/50 p-2">
-                    <div class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Volume</div>
-                    <div class="mt-1 text-sm font-semibold">${volume}</div>
+            <div class="mb-4 grid grid-cols-2 gap-2.5">
+                <div class="stat-card rounded-md border border-border/50 bg-muted/30 p-2.5 transition-colors hover:bg-muted/50">
+                    <div class="stat-label mb-1">Volume</div>
+                    <div class="stat-value text-base">${volume}</div>
                 </div>
-                <div class="rounded-md border bg-muted/50 p-2">
-                    <div class="text-xs font-medium text-muted-foreground uppercase tracking-wide">24h Vol</div>
-                    <div class="mt-1 text-sm font-semibold">${volume24hr}</div>
+                <div class="stat-card rounded-md border border-border/50 bg-muted/30 p-2.5 transition-colors hover:bg-muted/50">
+                    <div class="stat-label mb-1">24h Vol</div>
+                    <div class="stat-value text-base">${volume24hr}</div>
                 </div>
-                <div class="rounded-md border bg-muted/50 p-2">
-                    <div class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Liquidity</div>
-                    <div class="mt-1 text-sm font-semibold">${liquidity}</div>
+                <div class="stat-card rounded-md border border-border/50 bg-muted/30 p-2.5 transition-colors hover:bg-muted/50">
+                    <div class="stat-label mb-1">Liquidity</div>
+                    <div class="stat-value text-base">${liquidity}</div>
                 </div>
-                <div class="rounded-md border bg-muted/50 p-2">
-                    <div class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Markets</div>
-                    <div class="mt-1 text-sm font-semibold">${numMarkets}</div>
+                <div class="stat-card rounded-md border border-border/50 bg-muted/30 p-2.5 transition-colors hover:bg-muted/50">
+                    <div class="stat-label mb-1">Markets</div>
+                    <div class="stat-value text-base">${numMarkets}</div>
                 </div>
             </div>
             
             <div class="mb-4">
-                <div class="mb-2 text-xs font-medium text-muted-foreground">Top Predictions</div>
-                <div class="space-y-2">
+                <div class="mb-2 flex items-center justify-between">
+                    <span class="text-xs font-medium text-muted-foreground">Top Predictions</span>
+                    <span class="text-[10px] text-muted-foreground/70">Market Price</span>
+                </div>
+                <div class="space-y-1.5">
                     ${predictions.map(p => `
-                        <div class="flex items-center justify-between rounded-md border bg-muted/30 p-2">
-                            <div>
-                                <div class="text-sm font-medium">${escapeHtml(p.outcome)}</div>
-                                <div class="text-xs text-muted-foreground">Market Price</div>
+                        <div class="table-row-hover flex items-center justify-between rounded-md border border-border/30 bg-muted/20 p-2 transition-colors hover:bg-muted/40">
+                            <div class="flex items-center gap-2">
+                                <div class="h-1.5 w-1.5 rounded-full bg-primary/60"></div>
+                                <div>
+                                    <div class="text-sm font-medium">${escapeHtml(p.outcome)}</div>
+                                </div>
                             </div>
-                            <div class="text-sm font-semibold">${(p.price * 100).toFixed(0)}%</div>
+                            <div class="text-sm font-semibold tabular-nums">${(p.price * 100).toFixed(0)}%</div>
                         </div>
                     `).join('')}
                 </div>
             </div>
             
-            <div class="flex items-center justify-between border-t pt-4">
-                <span class="inline-flex items-center gap-2 rounded-full ${isLive ? 'bg-green-100 text-green-800' : 'bg-muted text-muted-foreground'} px-2.5 py-0.5 text-xs font-medium">
-                    <span class="h-1.5 w-1.5 rounded-full ${isLive ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'}"></span>
-                    ${isLive ? 'LIVE' : 'CLOSED'}
-                </span>
-                <span class="text-xs text-muted-foreground">${closeText}</span>
+            <div class="flex items-center justify-between border-t border-border/50 pt-3.5">
+                <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>${closeText}</span>
+                </div>
+                <div class="flex items-center gap-1 text-xs text-muted-foreground/70">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                    <span>View Details</span>
+                </div>
             </div>
         </div>
     `;
