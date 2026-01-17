@@ -348,27 +348,3 @@ a:hover {
     @apply text-red-600;
 }
 
-/* Liquid Glass Effect - Simplified Single Layer */
-.glass-container {
-	position: absolute;
-	inset: 0;
-	border-radius: 0.75rem;
-	height: 100%;
-	width: 100%;
-	pointer-events: none;
-	overflow: hidden;
-	z-index: 1;
-}
-
-.glass-effect-backdrop {
-  border-radius: 0.75rem;
-	position: absolute;
-	left: 0;
-	right: 0;
-	top: 0;
-	bottom: 0;
-	background: rgba(255, 255, 255, 0.08);
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
-	border: 1px solid rgba(255, 255, 255, 0.15);
-}
