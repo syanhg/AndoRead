@@ -1,0 +1,349 @@
+/* Enhanced Micro-interactions and Polish */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+* {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth transitions for all interactive elements */
+button, a, input, select, textarea {
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced card hover effects */
+.card-hover {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+/* Subtle shimmer effect for loading states */
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+.shimmer {
+    background: linear-gradient(
+        90deg,
+        #f0f0f0 0%,
+        #f8f8f8 20%,
+        #f0f0f0 40%,
+        #f0f0f0 100%
+    );
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite linear;
+}
+
+/* Loading skeleton */
+.skeleton {
+    @apply animate-pulse bg-muted rounded;
+}
+
+/* Tooltip styles */
+.tooltip {
+    @apply absolute z-50 hidden rounded-md bg-popover px-3 py-1.5 text-xs text-popover-foreground shadow-md;
+}
+
+.tooltip-trigger:hover .tooltip {
+    @apply block;
+}
+
+/* Badge animations */
+.badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-all;
+}
+
+.badge-pulse {
+    animation: pulse-badge 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-badge {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* Enhanced input focus states */
+input:focus, textarea:focus, select:focus {
+    @apply ring-2 ring-ring ring-offset-2;
+}
+
+/* Subtle gradient backgrounds */
+.gradient-subtle {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.01) 100%);
+}
+
+/* Better scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    @apply bg-muted/30;
+}
+
+::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
+}
+
+/* Enhanced table row hover */
+.table-row-hover {
+    @apply transition-colors;
+}
+
+.table-row-hover:hover {
+    @apply bg-muted/50;
+}
+
+/* Status indicator pulse */
+.status-indicator {
+    @apply relative;
+}
+
+.status-indicator::before {
+    content: '';
+    @apply absolute inset-0 rounded-full animate-ping opacity-75;
+}
+
+/* Smooth page transitions */
+.page-transition {
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Enhanced button press effect */
+button:active {
+    transform: scale(0.98);
+}
+
+/* Better focus visible states */
+*:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2;
+}
+
+/* Micro-interaction for icons */
+.icon-interactive {
+    @apply transition-transform;
+}
+
+.icon-interactive:hover {
+    @apply scale-110;
+}
+
+/* Enhanced card borders */
+.card-border {
+    @apply border border-border/50;
+}
+
+.card-border:hover {
+    @apply border-border;
+}
+
+/* Subtle shadow elevation system */
+.shadow-elevation-1 {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.shadow-elevation-2 {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.shadow-elevation-3 {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Text selection styling */
+::selection {
+    @apply bg-primary/20 text-primary;
+}
+
+/* Better link hover states */
+a {
+    @apply transition-colors;
+}
+
+a:hover {
+    @apply text-primary;
+}
+
+/* Enhanced empty state */
+.empty-state {
+    @apply flex flex-col items-center justify-center py-16 px-4 text-center;
+}
+
+.empty-state-icon {
+    @apply h-12 w-12 text-muted-foreground/50 mb-4;
+}
+
+/* Loading spinner enhancement */
+.spinner {
+    @apply animate-spin rounded-full border-2 border-muted border-t-primary;
+}
+
+/* Progress bar animation */
+@keyframes progress {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
+
+.progress-bar {
+    @apply relative overflow-hidden rounded-full bg-muted;
+}
+
+.progress-bar-fill {
+    @apply h-full bg-primary transition-all duration-300;
+    animation: progress 0.3s ease-out;
+}
+
+/* Enhanced modal backdrop */
+.modal-backdrop {
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm;
+    animation: fadeIn 0.15s ease-out;
+}
+
+/* Better form field spacing */
+.form-field {
+    @apply space-y-2;
+}
+
+.form-label {
+    @apply text-sm font-medium leading-none;
+}
+
+.form-description {
+    @apply text-xs text-muted-foreground;
+}
+
+/* Enhanced badge variants */
+.badge-success {
+    @apply bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400;
+}
+
+.badge-warning {
+    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400;
+}
+
+.badge-error {
+    @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400;
+}
+
+.badge-info {
+    @apply bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400;
+}
+
+/* Better divider styling */
+.divider {
+    @apply border-t border-border/50;
+}
+
+/* Enhanced navigation active state */
+.nav-active {
+    @apply relative;
+}
+
+.nav-active::after {
+    content: '';
+    @apply absolute bottom-0 left-0 right-0 h-0.5 bg-primary;
+}
+
+/* Smooth number animations */
+.number-animate {
+    transition: all 0.3s ease-out;
+}
+
+/* Better image loading states */
+.image-loading {
+    @apply bg-muted animate-pulse;
+}
+
+/* Enhanced dropdown menu */
+.dropdown-menu {
+    @apply absolute z-50 mt-2 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md;
+    animation: slideDown 0.15s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Better code block styling */
+.code-block {
+    @apply rounded-md bg-muted p-4 font-mono text-sm;
+}
+
+/* Enhanced avatar styling */
+.avatar {
+    @apply relative inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted;
+}
+
+.avatar-sm {
+    @apply h-8 w-8;
+}
+
+.avatar-lg {
+    @apply h-12 w-12;
+}
+
+/* Better stat card styling */
+.stat-card {
+    @apply rounded-lg border bg-card p-4 transition-all hover:shadow-md;
+}
+
+.stat-value {
+    @apply text-2xl font-bold tracking-tight;
+}
+
+.stat-label {
+    @apply text-xs font-medium text-muted-foreground uppercase tracking-wide;
+}
+
+.stat-change {
+    @apply text-xs font-medium;
+}
+
+.stat-change-positive {
+    @apply text-green-600;
+}
+
+.stat-change-negative {
+    @apply text-red-600;
+}
