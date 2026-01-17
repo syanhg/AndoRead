@@ -756,44 +756,30 @@ async function runAIAnalysis(event, allSources) {
                     const now = Date.now();
                     if (now - lastUpdate > 100) {
                         const parsed = parseResponse(fullText);
-                        formatAnalysisText(fullText, parsed);
-                        const codeEl = document.getElementById('analysisCode');
-                        if (codeEl) {
-                            const currentText = codeEl.textContent;
-                            if (!currentText.includes('Analyzing in real-time')) {
-                                codeEl.innerHTML += '\n<span class="comment">// Analyzing in real-time...</span>';
-                            }
-                        }
+                        formatAnalysisText(fullText, parsed, allSources);
                         lastUpdate = now;
                     }
                 } else if (chunk && typeof chunk === 'string') {
                     hasStarted = true;
                     fullText += chunk;
                     const parsed = parseResponse(fullText);
-                    formatAnalysisText(fullText, parsed);
-                    const codeEl = document.getElementById('analysisCode');
-                    if (codeEl) {
-                        const currentText = codeEl.textContent;
-                        if (!currentText.includes('Analyzing in real-time')) {
-                            codeEl.innerHTML += '\n<span class="comment">// Analyzing in real-time...</span>';
-                        }
-                    }
+                    formatAnalysisText(fullText, parsed, allSources);
                 }
             }
             
             // Final update without loading indicator
             const parsed = parseResponse(fullText);
-            formatAnalysisText(fullText, parsed);
+            formatAnalysisText(fullText, parsed, allSources);
         } else if (stream && stream.text) {
             // Non-streaming response
             fullText = stream.text;
             const parsed = parseResponse(fullText);
-            formatAnalysisText(fullText, parsed);
+            formatAnalysisText(fullText, parsed, allSources);
         } else if (typeof stream === 'string') {
             // Direct string response
             fullText = stream;
             const parsed = parseResponse(fullText);
-            formatAnalysisText(fullText, parsed);
+            formatAnalysisText(fullText, parsed, allSources);
         }
         
         if (!hasStarted && !fullText) {
@@ -826,20 +812,8 @@ async function runFallbackAnalysis(event, allSources) {
     // Analyze sources locally with enhanced statistical methods
     const analysis = analyzeSourcesLocally(event, allSources);
     
-    // Display analysis in IDE format
-    const codeEl = document.getElementById('analysisCode');
-    if (codeEl) {
-        const fallbackText = `// Fallback Statistical Analysis\n\n${analysis.context}\n\n${analysis.factors}\n\n${analysis.rationale}\n\n// Insight: ${analysis.insight}`;
-        codeEl.innerHTML = formatIDE(fallbackText);
-        
-        // Update line numbers
-        const lineCount = (fallbackText.match(/\n/g) || []).length + 1;
-        const lineNumbers = Array.from({ length: lineCount }, (_, i) => i + 1).join('\n');
-        const lineNumbersEl = document.getElementById('analysisLineNumbers');
-        if (lineNumbersEl) {
-            lineNumbersEl.textContent = lineNumbers;
-        }
-    }
+    // Display analysis in IDE format with sources
+    formatAnalysisText('', { rawText: `Fallback Statistical Analysis\n\n${analysis.context}\n\n${analysis.factors}\n\n${analysis.rationale}\n\nInsight: ${analysis.insight}` }, allSources);
     
     displayPredictions(analysis.predictions);
     displayModelInsight(analysis.insight);
@@ -1283,7 +1257,15 @@ function parseResponse(text) {
     };
 }
 
-function formatAnalysisText(text, analysis) {
+// Store sources globally for IDE display
+let currentSourcesForDisplay = [];
+
+function formatAnalysisText(text, analysis, allSources = null) {
+    // Store sources for display
+    if (allSources) {
+        currentSourcesForDisplay = allSources;
+    }
+    
     // Remove JSON block but keep the text
     let display = text.replace(/```json[\s\S]*?```/g, '').trim();
     
@@ -1322,7 +1304,25 @@ function formatAnalysisText(text, analysis) {
     // Format as IDE-style code
     let formatted = '';
     
-    // Build IDE-style formatted text with step-by-step reasoning first (ALWAYS show it)
+    // Add sources section first
+    if (currentSourcesForDisplay && currentSourcesForDisplay.length > 0) {
+        formatted += `<span class="section">// ===== SOURCES (${currentSourcesForDisplay.length} total) =====</span>\n\n`;
+        currentSourcesForDisplay.slice(0, 18).forEach((source, i) => {
+            const domain = source.url ? (new URL(source.url).hostname.replace('www.', '') || 'Unknown') : 'AI Source';
+            const relevance = (source.relevanceScore || 0.5).toFixed(2);
+            const isRecent = source.isRecent ? ' [RECENT]' : '';
+            formatted += `<span class="comment">// Source ${i + 1}:</span> <span class="source">${escapeHtml(source.title || 'Untitled')}</span>\n`;
+            formatted += `<span class="comment">//   From:</span> <span class="string">${domain}</span> | <span class="comment">Relevance:</span> <span class="number">${relevance}</span>${isRecent}\n`;
+            if (source.text && source.text.length > 0) {
+                const preview = source.text.substring(0, 100).replace(/\n/g, ' ');
+                formatted += `<span class="comment">//   Preview:</span> ${escapeHtml(preview)}...\n`;
+            }
+            formatted += `\n`;
+        });
+        formatted += `<span class="comment">─────────────────────────────────────────────</span>\n\n`;
+    }
+    
+    // Build IDE-style formatted text with step-by-step reasoning (ALWAYS show it)
     if (sections.stepByStep) {
         formatted += `<span class="section">// ===== STEP-BY-STEP REASONING PROCESS =====</span>\n\n`;
         formatted += formatIDE(sections.stepByStep) + '\n\n';
@@ -1335,6 +1335,10 @@ function formatAnalysisText(text, analysis) {
             formatted += `<span class="section">// ===== STEP-BY-STEP REASONING PROCESS =====</span>\n\n`;
             formatted += formatIDE(steps.join('\n\n')) + '\n\n';
             formatted += `<span class="comment">─────────────────────────────────────────────</span>\n\n`;
+        } else {
+            // If still no steps found, show the full text as reasoning
+            formatted += `<span class="section">// ===== REASONING PROCESS =====</span>\n\n`;
+            formatted += formatIDE(display.substring(0, 3000)) + '\n\n';
         }
     }
     
