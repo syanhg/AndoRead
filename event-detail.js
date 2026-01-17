@@ -6,7 +6,6 @@ let isAnalyzing = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     setupSearch();
-    setupIDETabs();
     // Wait for Puter to load
     if (typeof puter === 'undefined') {
         console.error('Puter not loaded, retrying...');
@@ -16,30 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function setupIDETabs() {
-    const tabs = document.querySelectorAll('.ide-tab');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const tabName = tab.dataset.tab;
-            
-            // Update active tab
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            
-            // Show/hide content
-            const analysisContentDiv = document.querySelector('#analysisContent .ide-content:first-of-type');
-            const summaryContentDiv = document.getElementById('summaryContent');
-            
-            if (tabName === 'analysis') {
-                if (analysisContentDiv) analysisContentDiv.classList.remove('hidden');
-                if (summaryContentDiv) summaryContentDiv.classList.add('hidden');
-            } else if (tabName === 'summary') {
-                if (analysisContentDiv) analysisContentDiv.classList.add('hidden');
-                if (summaryContentDiv) summaryContentDiv.classList.remove('hidden');
-            }
-        });
-    });
-}
 
 let currentEventData = null;
 
@@ -147,15 +122,14 @@ async function performAIAnalysis(event, isUpdate = false) {
         // Display sources (async for favicons)
         await displaySources(allSources);
         
-        // Step 5.5: Build knowledge graph with causality analysis
+        // Step 5.5: Build knowledge graph with causality analysis (background processing)
         console.log('Building knowledge graph with causality analysis...');
         const knowledgeGraph = await buildKnowledgeGraph(event, allSources);
-        displayKnowledgeGraph(knowledgeGraph);
         
         // Step 5.6: Use causal predictions if available
         if (knowledgeGraph && knowledgeGraph.metadata && knowledgeGraph.metadata.predictions) {
             console.log('Using causality-based predictions:', knowledgeGraph.metadata.predictions);
-            displayPredictions(knowledgeGraph.metadata.predictions);
+            displayMainPrediction(knowledgeGraph.metadata.predictions);
         }
         
         // Step 6: AI Analysis with streaming and timeout
@@ -175,9 +149,9 @@ async function performAIAnalysis(event, isUpdate = false) {
     } catch (error) {
         console.error('Analysis error:', error);
         if (!isUpdate) {
-        const codeEl = document.getElementById('analysisCode');
-        if (codeEl) {
-            codeEl.innerHTML = `<span class="comment">// Error: ${escapeHtml(error.message)}</span>\n<span class="comment">// Retrying with available sources...</span>`;
+        const reasoningEl = document.getElementById('reasoningContent');
+        if (reasoningEl) {
+            reasoningEl.innerHTML = `<p class="text-red-600">Error: ${escapeHtml(error.message)}. Retrying with available sources...</p>`;
         }
         }
         
@@ -814,9 +788,9 @@ async function runAIAnalysis(event, allSources, knowledgeGraph = null) {
     const prompt = buildPrompt(event, allSources, knowledgeGraph);
     
     // Update UI immediately
-    const codeEl = document.getElementById('analysisCode');
-    if (codeEl) {
-        codeEl.innerHTML = '<span class="comment">// AI is analyzing real-time sources...</span>';
+    const reasoningEl = document.getElementById('reasoningContent');
+    if (reasoningEl) {
+        reasoningEl.innerHTML = '<p class="text-gray-600">AI is analyzing real-time sources and building causal relationships...</p>';
     }
     
     // Try multiple AI services in order
@@ -833,11 +807,9 @@ async function runAIAnalysis(event, allSources, knowledgeGraph = null) {
             if (result && result.text) {
                 const fullText = result.text;
                 const parsed = parseResponse(fullText);
-                formatAnalysisText(fullText, parsed, allSources);
+                displayCleanAnalysis(fullText, parsed, allSources);
                 
-                displayPredictions(parsed.predictions);
-                displayModelInsight(parsed.insight || parsed.reasoning || 'Analysis complete');
-                displayStatisticalMetrics(parsed.metrics);
+                displayMainPrediction(parsed.predictions);
                 updateLastUpdateTime();
                 return;
             }
@@ -967,16 +939,15 @@ async function runFallbackAnalysis(event, allSources) {
     const analysisText = `${reasoningText}\n\n## ANALYSIS SUMMARY\n\n${analysis.context}\n\n${analysis.factors}\n\n${analysis.rationale}\n\nInsight: ${analysis.insight}`;
     
     // Display analysis in IDE format with sources and reasoning
-    formatAnalysisText(analysisText, { 
+    displayCleanAnalysis(analysisText, { 
         rawText: analysisText,
         predictions: analysis.predictions,
         insight: analysis.insight,
+        keyFactors: analysis.keyFactors || [],
         metrics: analysis.metrics
     }, allSources);
     
-        displayPredictions(analysis.predictions);
-        displayModelInsight(analysis.insight);
-    displayStatisticalMetrics(analysis.metrics);
+    displayMainPrediction(analysis.predictions);
     
     updateLastUpdateTime();
     
@@ -1460,211 +1431,104 @@ function parseResponse(text) {
 // Store sources globally for IDE display
 let currentSourcesForDisplay = [];
 
-function formatAnalysisText(text, analysis, allSources = null) {
-    // Store sources for display
-    if (allSources) {
-        currentSourcesForDisplay = allSources;
-    }
+function displayCleanAnalysis(text, analysis, allSources = null) {
+    const reasoningEl = document.getElementById('reasoningContent');
+    if (!reasoningEl) return;
     
-    // Remove JSON block but keep the text
+    // Remove JSON blocks
     let display = text.replace(/```json[\s\S]*?```/g, '').trim();
-    
-    // Always ensure we have content to display
     if (!display && analysis?.rawText) {
         display = analysis.rawText.replace(/```json[\s\S]*?```/g, '').trim();
     }
     
-    // Debug: log what we're working with
-    console.log('Formatting analysis text, length:', display.length);
-    console.log('First 500 chars:', display.substring(0, 500));
+    // Extract clean reasoning text
+    let reasoningText = '';
     
-    // Extract structured sections - prioritize step-by-step reasoning
-    // Look for step-by-step reasoning in multiple formats - BE AGGRESSIVE
-    let stepByStepReasoning = null;
-    
-    // Try code block first (most common format)
-    const codeBlockMatch = display.match(/```[\s\S]*?STEP-BY-STEP[\s\S]*?```/i);
-    if (codeBlockMatch) {
-        stepByStepReasoning = codeBlockMatch[0].replace(/```/g, '').trim();
+    // Try to extract step-by-step reasoning
+    const stepMatch = display.match(/STEP-BY-STEP[\s\S]*?(?=##|ANALYSIS|PREDICTIONS|$)/i);
+    if (stepMatch) {
+        reasoningText = stepMatch[0]
+            .replace(/```/g, '')
+            .replace(/STEP-BY-STEP[^\n]*/i, '')
+            .trim();
     }
     
-    // Try section headers
-    if (!stepByStepReasoning) {
-        stepByStepReasoning = extractSection(display, /STEP-BY-STEP REASONING|REASONING PROCESS|Reasoning Process|### STEP-BY-STEP REASONING|## REASONING PROCESS|## STEP-BY-STEP/i);
-    }
-    
-    // Extract individual steps if full section not found - look for ANY step pattern
-    if (!stepByStepReasoning) {
-        // Try multiple step patterns
-        const stepPatterns = [
-            /Step \d+:[^\n]*[\s\S]*?(?=Step \d+:|##|###|$)/gi,
-            /Step \d+[^\n]*[\s\S]*?(?=Step \d+|##|###|$)/gi,
-            /\*\*Step \d+[^\n]*\*\*[\s\S]*?(?=\*\*Step \d+|##|###|$)/gi,
-            /### Step \d+[^\n]*[\s\S]*?(?=### Step \d+|##|###|$)/gi
-        ];
-        
-        for (const pattern of stepPatterns) {
-            const steps = display.match(pattern);
-            if (steps && steps.length >= 3) { // Need at least 3 steps
-                stepByStepReasoning = steps.join('\n\n');
-                break;
-            }
+    // If no structured section, use analysis summary or first part
+    if (!reasoningText || reasoningText.length < 200) {
+        const summaryMatch = display.match(/ANALYSIS SUMMARY[\s\S]*?(?=PREDICTIONS|$)/i);
+        if (summaryMatch) {
+            reasoningText = summaryMatch[0].replace(/ANALYSIS SUMMARY[^\n]*/i, '').trim();
+        } else {
+            reasoningText = display.split(/PREDICTIONS|```json/i)[0].trim();
         }
     }
     
-    // If still nothing, extract everything before "ANALYSIS SUMMARY" or "PREDICTIONS"
-    if (!stepByStepReasoning) {
-        const beforeSummary = display.split(/## ANALYSIS|ANALYSIS SUMMARY|PREDICTIONS/i)[0];
-        if (beforeSummary && beforeSummary.trim().length > 200) {
-            stepByStepReasoning = beforeSummary.trim();
-        }
-    }
-    
-    const sections = {
-        stepByStep: stepByStepReasoning,
-        evidence: extractSection(display, /## ANALYSIS|### 1\. Evidence Synthesis|Evidence Synthesis|ANALYSIS SUMMARY/i),
-        statistical: extractSection(display, /### 2\. Statistical Reasoning|Statistical Reasoning/i),
-        integration: extractSection(display, /### 3\. Multi-Source Integration|Multi-Source Integration/i),
-        market: extractSection(display, /### 4\. Market Context|Market Context/i),
-        final: extractSection(display, /### 5\. Final Reasoning|Final Reasoning|Final Prediction/i)
-    };
-    
-    // Format as IDE-style code
+    // Format as clean HTML
     let formatted = '';
     
-    // Add sources section first
-    if (currentSourcesForDisplay && currentSourcesForDisplay.length > 0) {
-        formatted += `<span class="section">// ===== SOURCES (${currentSourcesForDisplay.length} total) =====</span>\n\n`;
-        currentSourcesForDisplay.slice(0, 18).forEach((source, i) => {
-            const domain = source.url ? (new URL(source.url).hostname.replace('www.', '') || 'Unknown') : 'AI Source';
-            const relevance = (source.relevanceScore || 0.5).toFixed(2);
-            const isRecent = source.isRecent ? ' [RECENT]' : '';
-            formatted += `<span class="comment">// Source ${i + 1}:</span> <span class="source">${escapeHtml(source.title || 'Untitled')}</span>\n`;
-            formatted += `<span class="comment">//   From:</span> <span class="string">${domain}</span> | <span class="comment">Relevance:</span> <span class="number">${relevance}</span>${isRecent}\n`;
-            if (source.text && source.text.length > 0) {
-                const preview = source.text.substring(0, 100).replace(/\n/g, ' ');
-                formatted += `<span class="comment">//   Preview:</span> ${escapeHtml(preview)}...\n`;
-            }
-            formatted += `\n`;
-        });
-        formatted += `<span class="comment">─────────────────────────────────────────────</span>\n\n`;
+    // Add source count if available
+    if (allSources && allSources.length > 0) {
+        formatted += `<div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div class="text-sm font-medium text-gray-900 mb-2">Analysis Based on ${allSources.length} Sources</div>
+            <div class="text-xs text-gray-600">Sources include: ${[...new Set(allSources.map(s => s.source || 'Unknown'))].slice(0, 5).join(', ')}</div>
+        </div>`;
     }
     
-    // Build IDE-style formatted text with step-by-step reasoning (ALWAYS show it)
-    // ALWAYS show reasoning - use whatever we found or generate from sources
-    formatted += `<span class="section">// ===== STEP-BY-STEP REASONING PROCESS =====</span>\n\n`;
+    // Format reasoning with proper paragraphs
+    const paragraphs = reasoningText
+        .split(/\n\n+/)
+        .filter(p => p.trim().length > 20)
+        .map(p => {
+            // Clean up markdown formatting
+            p = p.replace(/^#+\s*/gm, '');
+            p = p.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            p = p.replace(/\*(.+?)\*/g, '<em>$1</em>');
+            p = p.replace(/`(.+?)`/g, '<code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs">$1</code>');
+            
+            // Format step headers
+            p = p.replace(/Step\s+(\d+)[:\.]\s*(.+)/gi, '<div class="font-semibold text-gray-900 mt-4 mb-2">Step $1: $2</div>');
+            
+            // Format source citations
+            p = p.replace(/Source\s+(\d+)/gi, '<span class="text-blue-600 font-medium">Source $1</span>');
+            
+            return `<p class="mb-4 text-gray-700 leading-relaxed">${escapeHtml(p)}</p>`;
+        })
+        .join('');
     
-    let reasoningToShow = null;
+    formatted += paragraphs;
     
-    if (sections.stepByStep && sections.stepByStep.length > 50) {
-        reasoningToShow = sections.stepByStep;
-        console.log('Using extracted stepByStep section, length:', reasoningToShow.length);
-    } else if (display && display.length > 100) {
-        // Use the first part of the display as reasoning if no structured section found
-        const reasoningText = display.split(/## ANALYSIS|ANALYSIS SUMMARY|PREDICTIONS|```json/i)[0];
-        if (reasoningText && reasoningText.trim().length > 100) {
-            reasoningToShow = reasoningText.trim();
-            console.log('Using split reasoning text, length:', reasoningToShow.length);
-        } else {
-            reasoningToShow = display.substring(0, 3000);
-            console.log('Using first 3000 chars as reasoning');
-        }
+    // Add key factors if available
+    if (analysis?.keyFactors && analysis.keyFactors.length > 0) {
+        formatted += `<div class="mt-6 pt-6 border-t border-gray-200">
+            <div class="text-sm font-semibold text-gray-900 mb-3">Key Factors</div>
+            <ul class="space-y-2">
+                ${analysis.keyFactors.map(factor => `
+                    <li class="flex items-start gap-2">
+                        <span class="text-blue-600 mt-1">•</span>
+                        <div>
+                            <span class="text-sm font-medium text-gray-900">${escapeHtml(factor.factor || 'Factor')}</span>
+                            <span class="text-xs text-gray-500 ml-2">(${factor.impact || 'Medium'} impact)</span>
+                            ${factor.sources && factor.sources.length > 0 ? `
+                                <div class="text-xs text-gray-500 mt-1">Sources: ${factor.sources.join(', ')}</div>
+                            ` : ''}
+                        </div>
+                    </li>
+                `).join('')}
+            </ul>
+        </div>`;
     }
     
-    // ALWAYS generate step-by-step reasoning from sources (guaranteed to work)
-    // This ensures reasoning is always shown even if AI doesn't provide it
-    const generatedReasoning = generateStepByStepReasoning(
-        currentSourcesForDisplay || [], 
-        analysis || {}, 
-        display || ''
-    );
-    
-    // Use AI reasoning if available and substantial, otherwise use generated
-    if (reasoningToShow && reasoningToShow.length > 200) {
-        formatted += formatIDE(reasoningToShow) + '\n\n';
-        console.log('Using AI-provided reasoning');
-    } else {
-        formatted += formatIDE(generatedReasoning) + '\n\n';
-        console.log('Using generated reasoning from sources, length:', generatedReasoning.length);
+    // Add insight if available
+    if (analysis?.insight) {
+        formatted += `<div class="mt-6 pt-6 border-t border-gray-200">
+            <div class="text-sm font-semibold text-gray-900 mb-2">Key Insight</div>
+            <p class="text-sm text-gray-700 leading-relaxed italic">${escapeHtml(analysis.insight)}</p>
+        </div>`;
     }
     
-    formatted += `<span class="comment">─────────────────────────────────────────────</span>\n\n`;
-    
-    // Also populate summary tab with analysis summary
-    const summaryCode = document.getElementById('summaryCode');
-    if (summaryCode) {
-        const summaryText = sections.evidence || sections.statistical || display.substring(0, 1500);
-        const summaryFormatted = formatIDE(summaryText);
-        summaryCode.innerHTML = summaryFormatted;
-        const summaryLineCount = (summaryFormatted.match(/\n/g) || []).length + 1;
-        const summaryLineNumbers = Array.from({ length: summaryLineCount }, (_, i) => i + 1).join('\n');
-        const summaryLineNumbersEl = document.getElementById('summaryLineNumbers');
-        if (summaryLineNumbersEl) {
-            summaryLineNumbersEl.textContent = summaryLineNumbers;
-        }
-    }
-    
-    if (sections.evidence) {
-        formatted += `<span class="section">// ===== EVIDENCE SYNTHESIS =====</span>\n\n`;
-        formatted += formatIDE(sections.evidence) + '\n\n';
-    }
-    
-    if (sections.statistical) {
-        formatted += `<span class="section">// ===== STATISTICAL REASONING =====</span>\n\n`;
-        formatted += formatIDE(sections.statistical) + '\n\n';
-    }
-    
-    if (sections.integration) {
-        formatted += `<span class="section">// ===== MULTI-SOURCE INTEGRATION =====</span>\n\n`;
-        formatted += formatIDE(sections.integration) + '\n\n';
-    }
-    
-    if (sections.market) {
-        formatted += `<span class="section">// ===== MARKET CONTEXT =====</span>\n\n`;
-        formatted += formatIDE(sections.market) + '\n\n';
-    }
-    
-    if (sections.final) {
-        formatted += `<span class="section">// ===== FINAL REASONING =====</span>\n\n`;
-        formatted += formatIDE(sections.final) + '\n\n';
-    }
-    
-    // If no structured sections found, format the whole text (always show something)
-    if (!formatted) {
-        if (display) {
-            formatted = formatIDE(display);
-        } else {
-            formatted = '<span class="comment">// Analysis in progress...</span>';
-        }
-    }
-    
-    // Update the code element
-    const codeEl = document.getElementById('analysisCode');
-    if (codeEl) {
-        codeEl.innerHTML = formatted;
-        
-        // Update line numbers - count actual lines in the formatted text
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = formatted;
-        const textContent = tempDiv.textContent || formatted.replace(/<[^>]*>/g, '');
-        const lineCount = (textContent.match(/\n/g) || []).length + 1;
-        const lineNumbers = Array.from({ length: lineCount }, (_, i) => i + 1).join('\n');
-        const lineNumbersEl = document.getElementById('analysisLineNumbers');
-        if (lineNumbersEl) {
-            lineNumbersEl.textContent = lineNumbers;
-        }
-    }
-    
-    // Update reasoning tab if available
-    if (analysis?.reasoning) {
-        const reasoningCode = document.getElementById('reasoningCode');
-        if (reasoningCode) {
-            reasoningCode.innerHTML = formatIDE(analysis.reasoning);
-        }
-    }
-    
-    return ''; // Return empty since we're updating DOM directly
+    reasoningEl.innerHTML = formatted || '<p class="text-gray-600">Analysis in progress...</p>';
 }
+
 
 function generateStepByStepReasoning(sources, analysis, fullText) {
     if (!sources || sources.length === 0) {
@@ -1834,60 +1698,6 @@ function displayPredictions(predictions) {
     `).join('');
 }
 
-function displayModelInsight(insight) {
-    const insightContainer = document.getElementById('insightContainer');
-    const insightCode = document.getElementById('insightCode');
-    if (insightCode && insight) {
-        insightCode.innerHTML = `<span class="comment">// Key Insight</span>\n\n${formatIDE(insight)}`;
-        insightContainer.classList.remove('hidden');
-        
-        // Update line numbers
-        const lineCount = insightCode.textContent.split('\n').length;
-        const lineNumbers = Array.from({ length: lineCount }, (_, i) => i + 1).join('\n');
-        const lineNumbersEl = document.getElementById('insightLineNumbers');
-        if (lineNumbersEl) {
-            lineNumbersEl.textContent = lineNumbers;
-        }
-    }
-}
-
-function displayStatisticalMetrics(metrics) {
-    if (!metrics) return;
-    
-    const metricsContainer = document.getElementById('statisticalMetrics');
-    const metricsContent = document.getElementById('metricsContent');
-    
-    if (!metricsContainer || !metricsContent) return;
-    
-    metricsContainer.classList.remove('hidden');
-    
-    const items = [];
-    
-    if (metrics.bayesianPosterior !== undefined) {
-        items.push(`Bayesian Posterior: ${(metrics.bayesianPosterior * 100).toFixed(1)}%`);
-    }
-    
-    if (metrics.confidenceInterval) {
-        const [lower, upper] = metrics.confidenceInterval;
-        items.push(`95% CI: [${(lower * 100).toFixed(1)}%, ${(upper * 100).toFixed(1)}%]`);
-    }
-    
-    if (metrics.statisticalSignificance !== undefined) {
-        items.push(`Significance: ${metrics.statisticalSignificance ? 'Yes (p<0.05)' : 'No (p≥0.05)'}`);
-    }
-    
-    if (metrics.monteCarloMean !== undefined) {
-        items.push(`Monte Carlo: ${(metrics.monteCarloMean * 100).toFixed(1)}% ± ${(metrics.monteCarloStd * 100).toFixed(1)}%`);
-    }
-    
-    if (metrics.sampleSize !== undefined) {
-        items.push(`Sample Size: n=${metrics.sampleSize}`);
-    }
-    
-    metricsContent.innerHTML = items.map(item => 
-        `<div class="text-xs text-gray-600">${item}</div>`
-    ).join('');
-}
 
 function displayKnowledgeGraph(graph) {
     const container = document.getElementById('knowledgeGraph');
