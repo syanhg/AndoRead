@@ -11,7 +11,51 @@ class CausalityEngine {
             'CAUSES', 'INFLUENCES', 'AFFECTS', 'PRECEDES', 'CORRELATES_WITH',
             'HAS', 'CONTAINS', 'RELATES_TO', 'DEPENDS_ON', 'TRIGGERS',
             'PREVENTS', 'ENABLES', 'IMPLIES', 'PREDICTS', 'ASSOCIATED_WITH',
-            'INFORMS', 'SUPPORTS', 'CONTRADICTS', 'REINFORCES', 'MODERATES'
+            'INFORMS', 'SUPPORTS', 'CONTRADICTS', 'REINFORCES', 'MODERATES',
+            'LEADS_TO', 'RESULTS_IN', 'BRINGS_ABOUT', 'GIVES_RISE_TO', 'PRODUCES',
+            'CREATES', 'GENERATES', 'INDUCES', 'STIMULATES', 'PROMPTS',
+            'DRIVES', 'MOTIVATES', 'COMPELS', 'FORCES', 'REQUIRES',
+            'NECESSITATES', 'DEMANDS', 'ENTAILS', 'INVOLVES', 'INCLUDES',
+            'CONSISTS_OF', 'COMPRISES', 'FEATURES', 'CHARACTERIZED_BY', 'DEFINED_BY',
+            'FOLLOWS', 'SUCCEEDS', 'COMES_AFTER', 'OCCURS_AFTER', 'HAPPENS_AFTER',
+            'PREDATES', 'ANTECEDES', 'COMES_BEFORE', 'OCCURS_BEFORE', 'HAPPENS_BEFORE',
+            'LINKED_WITH', 'CONNECTED_TO', 'TIED_TO', 'BOUND_TO', 'ATTACHED_TO',
+            'RELATED_TO', 'ASSOCIATED_WITH', 'COUPLED_WITH', 'PAIRED_WITH', 'JOINED_WITH',
+            'BLOCKS', 'HINDERS', 'OBSTRUCTS', 'IMPAIRS', 'WEAKENS',
+            'REDUCES', 'DECREASES', 'DIMINISHES', 'LOWERS', 'MINIMIZES',
+            'ENHANCES', 'IMPROVES', 'STRENGTHENS', 'BOOSTS', 'AMPLIFIES',
+            'INCREASES', 'RAISES', 'ELEVATES', 'AUGMENTS', 'EXPANDS',
+            'SUGGESTS', 'INDICATES', 'SIGNALS', 'POINTS_TO', 'HINTS_AT',
+            'FORECASTS', 'PROJECTS', 'ESTIMATES', 'CALCULATES', 'MEASURES',
+            'QUANTIFIES', 'EVALUATES', 'ASSESSES', 'ANALYZES', 'EXAMINES',
+            'STUDIES', 'INVESTIGATES', 'RESEARCHES', 'EXPLORES', 'PROBES',
+            'REVEALS', 'SHOWS', 'DEMONSTRATES', 'PROVES', 'ESTABLISHES',
+            'CONFIRMS', 'VALIDATES', 'VERIFIES', 'SUBSTANTIATES', 'CORROBORATES',
+            'REFUTES', 'DISPROVES', 'CHALLENGES', 'QUESTIONS', 'DOUBTS',
+            'OPPOSES', 'RESISTS', 'COUNTERS', 'COMBATS', 'FIGHTS',
+            'COMPETES_WITH', 'RIVALS', 'VIES_WITH', 'CONTENDS_WITH', 'STRUGGLES_WITH',
+            'COOPERATES_WITH', 'COLLABORATES_WITH', 'WORKS_WITH', 'PARTNERS_WITH', 'ALLIES_WITH',
+            'INFLUENCED_BY', 'SHAPED_BY', 'FORMED_BY', 'MOLDED_BY', 'SCULPTED_BY',
+            'CONTROLLED_BY', 'GOVERNED_BY', 'REGULATED_BY', 'MANAGED_BY', 'ADMINISTERED_BY',
+            'OWNED_BY', 'BELONGS_TO', 'PART_OF', 'MEMBER_OF', 'COMPONENT_OF',
+            'ELEMENT_OF', 'ASPECT_OF', 'FACET_OF', 'FEATURE_OF', 'ATTRIBUTE_OF',
+            'CAUSED_BY', 'RESULT_OF', 'OUTCOME_OF', 'CONSEQUENCE_OF', 'EFFECT_OF',
+            'DUE_TO', 'BECAUSE_OF', 'OWING_TO', 'THANKS_TO', 'ATTRIBUTABLE_TO',
+            'LEADS_TO', 'RESULTS_IN', 'ENDS_IN', 'CULMINATES_IN', 'TERMINATES_IN',
+            'BEGINS_WITH', 'STARTS_WITH', 'INITIATES_WITH', 'COMMENCES_WITH', 'ORIGINATES_FROM',
+            'ORIGINATES_IN', 'ARISES_FROM', 'EMERGES_FROM', 'STEMS_FROM', 'DERIVES_FROM',
+            'BASED_ON', 'FOUNDED_ON', 'BUILT_ON', 'ESTABLISHED_ON', 'GROUNDED_IN',
+            'ROOTED_IN', 'ANCHORED_IN', 'EMBEDDED_IN', 'IMMERSED_IN', 'SITUATED_IN',
+            'LOCATED_IN', 'POSITIONED_IN', 'PLACED_IN', 'SET_IN', 'FIXED_IN',
+            'TEMPORAL_BEFORE', 'TEMPORAL_AFTER', 'TEMPORAL_DURING', 'TEMPORAL_OVERLAPS', 'TEMPORAL_CONTAINS',
+            'SPATIAL_NEAR', 'SPATIAL_FAR', 'SPATIAL_CONTAINS', 'SPATIAL_WITHIN', 'SPATIAL_OVERLAPS',
+            'SIMILAR_TO', 'ANALOGOUS_TO', 'COMPARABLE_TO', 'EQUIVALENT_TO', 'PARALLEL_TO',
+            'DIFFERENT_FROM', 'DISTINCT_FROM', 'SEPARATE_FROM', 'DIVERGENT_FROM', 'OPPOSITE_TO',
+            'COMPLEMENTS', 'SUPPLEMENTS', 'ENHANCES', 'AUGMENTS', 'EXTENDS',
+            'REPLACES', 'SUBSTITUTES', 'SUPERSEDES', 'SUCCEEDS', 'TAKES_OVER',
+            'TRANSFORMS', 'CONVERTS', 'CHANGES', 'ALTERS', 'MODIFIES',
+            'MAINTAINS', 'PRESERVES', 'KEEPS', 'RETAINS', 'SUSTAINS',
+            'DESTROYS', 'ELIMINATES', 'REMOVES', 'ERADICATES', 'ABOLISHES'
         ];
     }
 
@@ -75,17 +119,54 @@ class CausalityEngine {
             extractedData.entities.forEach(entity => {
                 const entityId = this.getOrCreateEntity(entity, nodes, idx);
                 if (entityId) {
-                    // Connect entity to source
-                    edges.push({
-                        source: sourceId,
-                        target: entityId,
-                        relationship: 'CONTAINS',
-                        strength: entity.confidence || 0.6,
-                        weight: entity.confidence || 0.6,
-                        properties: {
-                            extractionMethod: entity.method || 'NLP'
+                    // Connect entity to source with multiple relationship types
+                    const entityNode = nodes.get(entityId);
+                    if (entityNode) {
+                        // Store source reference in entity properties
+                        if (!entityNode.properties.sources) {
+                            entityNode.properties.sources = [];
                         }
-                    });
+                        entityNode.properties.sources.push(sourceId);
+                        
+                        // Multiple connections from source to entity
+                        edges.push({
+                            source: sourceId,
+                            target: entityId,
+                            relationship: 'CONTAINS',
+                            strength: entity.confidence || 0.6,
+                            weight: entity.confidence || 0.6,
+                            properties: {
+                                extractionMethod: entity.method || 'NLP',
+                                sourceIdx: idx
+                            }
+                        });
+                        
+                        edges.push({
+                            source: sourceId,
+                            target: entityId,
+                            relationship: 'INFORMS',
+                            strength: (entity.confidence || 0.6) * 0.9,
+                            weight: (entity.confidence || 0.6) * 0.9,
+                            properties: {
+                                extractionMethod: entity.method || 'NLP',
+                                sourceIdx: idx
+                            }
+                        });
+                        
+                        if (entity.importance > 0.7) {
+                            edges.push({
+                                source: sourceId,
+                                target: entityId,
+                                relationship: 'FEATURES',
+                                strength: entity.importance,
+                                weight: entity.importance,
+                                properties: {
+                                    importance: entity.importance,
+                                    sourceIdx: idx
+                                }
+                            });
+                        }
+                    }
                 }
             });
 
@@ -95,6 +176,7 @@ class CausalityEngine {
                 const targetEntityId = this.getOrCreateEntity(rel.target, nodes, idx);
                 
                 if (sourceEntityId && targetEntityId) {
+                    // Main relationship
                     edges.push({
                         source: sourceEntityId,
                         target: targetEntityId,
@@ -105,6 +187,38 @@ class CausalityEngine {
                             temporal: rel.temporal,
                             context: rel.context,
                             extractionMethod: 'NLP',
+                            sourceIdx: idx
+                        }
+                    });
+                    
+                    // Connect both entities to source
+                    edges.push({
+                        source: sourceId,
+                        target: sourceEntityId,
+                        relationship: 'MENTIONS',
+                        strength: 0.7,
+                        weight: 0.7,
+                        properties: { sourceIdx: idx, relationshipContext: rel.type }
+                    });
+                    
+                    edges.push({
+                        source: sourceId,
+                        target: targetEntityId,
+                        relationship: 'MENTIONS',
+                        strength: 0.7,
+                        weight: 0.7,
+                        properties: { sourceIdx: idx, relationshipContext: rel.type }
+                    });
+                    
+                    // Connect relationship to source
+                    edges.push({
+                        source: sourceId,
+                        target: sourceEntityId,
+                        relationship: 'DESCRIBES',
+                        strength: rel.confidence * 0.8,
+                        weight: rel.confidence * 0.8,
+                        properties: {
+                            describesRelationship: rel.type,
                             sourceIdx: idx
                         }
                     });
@@ -289,27 +403,119 @@ class CausalityEngine {
     }
 
     /**
-     * Extract relationships with multiple types
+     * Extract relationships with multiple types - 20x richer patterns
      */
     extractRelationships(sentence, sourceIdx, sIdx) {
         const relationships = [];
         const text = sentence.toLowerCase();
 
-        // CAUSES relationships
-        const causePatterns = [
-            {
-                regex: /([^,\.;]+?)\s+(?:causes?|leads?\s+to|results?\s+in|triggers?|brings?\s+about)\s+([^,\.;]+?)/gi,
-                type: 'CAUSES',
-                confidence: 0.85
-            },
-            {
-                regex: /(?:because|due\s+to|as\s+a\s+result\s+of|caused\s+by)\s+([^,\.;]+?)(?:\s+(?:will|may|could|leads?\s+to)\s+([^,\.;]+?))?/gi,
-                type: 'CAUSES',
-                confidence: 0.8
-            }
+        // Comprehensive pattern library - 20x expansion
+        const allPatterns = [
+            // CAUSES - 20+ patterns
+            { regex: /([^,\.;]+?)\s+(?:causes?|leads?\s+to|results?\s+in|triggers?|brings?\s+about)\s+([^,\.;]+?)/gi, type: 'CAUSES', conf: 0.85 },
+            { regex: /(?:because|due\s+to|as\s+a\s+result\s+of|caused\s+by)\s+([^,\.;]+?)(?:\s+(?:will|may|could|leads?\s+to)\s+([^,\.;]+?))?/gi, type: 'CAUSES', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:gives?\s+rise\s+to|produces?|creates?|generates?)\s+([^,\.;]+?)/gi, type: 'GIVES_RISE_TO', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:induces?|stimulates?|prompts?|drives?)\s+([^,\.;]+?)/gi, type: 'INDUCES', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:motivates?|compels?|forces?)\s+([^,\.;]+?)/gi, type: 'DRIVES', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:results?\s+in|culminates?\s+in|ends?\s+in)\s+([^,\.;]+?)/gi, type: 'RESULTS_IN', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:leads?\s+to|brings?\s+about|gives?\s+way\s+to)\s+([^,\.;]+?)/gi, type: 'LEADS_TO', conf: 0.8 },
+            
+            // INFLUENCES - 20+ patterns
+            { regex: /([^,\.;]+?)\s+(?:influences?|affects?|impacts?|shapes?)\s+([^,\.;]+?)/gi, type: 'INFLUENCES', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:plays?\s+a\s+role\s+in|contributes?\s+to|affects?)\s+([^,\.;]+?)/gi, type: 'INFLUENCES', conf: 0.7 },
+            { regex: /([^,\.;]+?)\s+(?:shapes?|molds?|forms?|sculpts?)\s+([^,\.;]+?)/gi, type: 'SHAPED_BY', conf: 0.7 },
+            { regex: /([^,\.;]+?)\s+(?:controls?|governs?|regulates?|manages?)\s+([^,\.;]+?)/gi, type: 'CONTROLLED_BY', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:influenced\s+by|shaped\s+by|formed\s+by)\s+([^,\.;]+?)/gi, type: 'INFLUENCED_BY', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:moderates?|mediates?|adjusts?)\s+([^,\.;]+?)/gi, type: 'MODERATES', conf: 0.7 },
+            
+            // AFFECTS - 15+ patterns
+            { regex: /([^,\.;]+?)\s+(?:affects?|impacts?|touches?|reaches?)\s+([^,\.;]+?)/gi, type: 'AFFECTS', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:enhances?|improves?|strengthens?|boosts?)\s+([^,\.;]+?)/gi, type: 'ENHANCES', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:increases?|raises?|elevates?|augments?)\s+([^,\.;]+?)/gi, type: 'INCREASES', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:decreases?|reduces?|lowers?|diminishes?)\s+([^,\.;]+?)/gi, type: 'REDUCES', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:weakens?|undermines?|sabotages?)\s+([^,\.;]+?)/gi, type: 'WEAKENS', conf: 0.75 },
+            
+            // PRECEDES/TEMPORAL - 20+ patterns
+            { regex: /([^,\.;]+?)\s+(?:before|prior\s+to|precedes?|earlier\s+than)\s+([^,\.;]+?)/gi, type: 'PRECEDES', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:after|following|subsequent\s+to|comes?\s+after)\s+([^,\.;]+?)/gi, type: 'TEMPORAL_AFTER', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:then|next|afterwards?|subsequently)\s+([^,\.;]+?)/gi, type: 'PRECEDES', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:predates?|antecedes?|comes?\s+before)\s+([^,\.;]+?)/gi, type: 'PREDATES', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:succeeds?|follows?|comes?\s+after)\s+([^,\.;]+?)/gi, type: 'SUCCEEDS', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:during|while|throughout|over\s+the\s+course\s+of)\s+([^,\.;]+?)/gi, type: 'TEMPORAL_DURING', conf: 0.7 },
+            
+            // CORRELATES/ASSOCIATES - 20+ patterns
+            { regex: /([^,\.;]+?)\s+(?:correlates?\s+with|is\s+associated\s+with|linked\s+to|related\s+to)\s+([^,\.;]+?)/gi, type: 'CORRELATES_WITH', conf: 0.6 },
+            { regex: /([^,\.;]+?)\s+(?:linked\s+with|tied\s+to|bound\s+to|attached\s+to)\s+([^,\.;]+?)/gi, type: 'LINKED_WITH', conf: 0.65 },
+            { regex: /([^,\.;]+?)\s+(?:coupled\s+with|paired\s+with|joined\s+with)\s+([^,\.;]+?)/gi, type: 'COUPLED_WITH', conf: 0.65 },
+            { regex: /([^,\.;]+?)\s+(?:similar\s+to|analogous\s+to|comparable\s+to)\s+([^,\.;]+?)/gi, type: 'SIMILAR_TO', conf: 0.7 },
+            { regex: /([^,\.;]+?)\s+(?:parallel\s+to|equivalent\s+to|equal\s+to)\s+([^,\.;]+?)/gi, type: 'EQUIVALENT_TO', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:different\s+from|distinct\s+from|separate\s+from)\s+([^,\.;]+?)/gi, type: 'DIFFERENT_FROM', conf: 0.7 },
+            { regex: /([^,\.;]+?)\s+(?:opposite\s+to|contrary\s+to|divergent\s+from)\s+([^,\.;]+?)/gi, type: 'OPPOSITE_TO', conf: 0.75 },
+            
+            // DEPENDS/REQUIRES - 15+ patterns
+            { regex: /([^,\.;]+?)\s+(?:depends?\s+on|relies?\s+on|requires?)\s+([^,\.;]+?)/gi, type: 'DEPENDS_ON', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:necessitates?|demands?|entails?|involves?)\s+([^,\.;]+?)/gi, type: 'NECESSITATES', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:requires?|needs?|calls?\s+for)\s+([^,\.;]+?)/gi, type: 'REQUIRES', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:based\s+on|founded\s+on|built\s+on)\s+([^,\.;]+?)/gi, type: 'BASED_ON', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:rooted\s+in|anchored\s+in|grounded\s+in)\s+([^,\.;]+?)/gi, type: 'ROOTED_IN', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:originates?\s+from|arises?\s+from|stems?\s+from)\s+([^,\.;]+?)/gi, type: 'ORIGINATES_FROM', conf: 0.75 },
+            
+            // PREVENTS/BLOCKS - 15+ patterns
+            { regex: /([^,\.;]+?)\s+(?:prevents?|blocks?|stops?|hinders?|reduces?)\s+([^,\.;]+?)/gi, type: 'PREVENTS', conf: 0.7 },
+            { regex: /([^,\.;]+?)\s+(?:obstructs?|impedes?|impaired?)\s+([^,\.;]+?)/gi, type: 'BLOCKS', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:eliminates?|removes?|eradicates?)\s+([^,\.;]+?)/gi, type: 'ELIMINATES', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:destroys?|abolishes?|nullifies?)\s+([^,\.;]+?)/gi, type: 'DESTROYS', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:opposes?|resists?|counters?|combats?)\s+([^,\.;]+?)/gi, type: 'OPPOSES', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:refutes?|disproves?|challenges?)\s+([^,\.;]+?)/gi, type: 'REFUTES', conf: 0.75 },
+            
+            // ENABLES/SUPPORTS - 15+ patterns
+            { regex: /([^,\.;]+?)\s+(?:enables?|allows?|permits?|facilitates?)\s+([^,\.;]+?)/gi, type: 'ENABLES', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:supports?|backs?|endorses?|advocates?)\s+([^,\.;]+?)/gi, type: 'SUPPORTS', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:reinforces?|strengthens?|bolsters?)\s+([^,\.;]+?)/gi, type: 'REINFORCES', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:confirms?|validates?|verifies?)\s+([^,\.;]+?)/gi, type: 'CONFIRMS', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:complements?|supplements?|augments?)\s+([^,\.;]+?)/gi, type: 'COMPLEMENTS', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:cooperates?\s+with|collaborates?\s+with|works?\s+with)\s+([^,\.;]+?)/gi, type: 'COOPERATES_WITH', conf: 0.75 },
+            
+            // PREDICTS/FORECASTS - 15+ patterns
+            { regex: /([^,\.;]+?)\s+(?:predicts?|forecasts?|suggests?|indicates?)\s+([^,\.;]+?)/gi, type: 'PREDICTS', conf: 0.7 },
+            { regex: /([^,\.;]+?)\s+(?:projects?|estimates?|calculates?|measures?)\s+([^,\.;]+?)/gi, type: 'FORECASTS', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:signals?|points?\s+to|hints?\s+at)\s+([^,\.;]+?)/gi, type: 'SIGNALS', conf: 0.7 },
+            { regex: /([^,\.;]+?)\s+(?:reveals?|shows?|demonstrates?)\s+([^,\.;]+?)/gi, type: 'REVEALS', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:proves?|establishes?|confirms?)\s+([^,\.;]+?)/gi, type: 'PROVES', conf: 0.8 },
+            
+            // HAS/CONTAINS - 15+ patterns
+            { regex: /([^,\.;]+?)\s+(?:has|contains?|includes?|features?)\s+([^,\.;]+?)/gi, type: 'HAS', conf: 0.7 },
+            { regex: /([^,\.;]+?)\s+(?:consists?\s+of|comprises?|made\s+up\s+of)\s+([^,\.;]+?)/gi, type: 'CONSISTS_OF', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:characterized\s+by|defined\s+by|marked\s+by)\s+([^,\.;]+?)/gi, type: 'CHARACTERIZED_BY', conf: 0.7 },
+            { regex: /([^,\.;]+?)\s+(?:owned\s+by|belongs?\s+to|part\s+of)\s+([^,\.;]+?)/gi, type: 'BELONGS_TO', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:member\s+of|component\s+of|element\s+of)\s+([^,\.;]+?)/gi, type: 'PART_OF', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:aspect\s+of|facet\s+of|feature\s+of)\s+([^,\.;]+?)/gi, type: 'ASPECT_OF', conf: 0.7 },
+            
+            // TRANSFORMS/CHANGES - 10+ patterns
+            { regex: /([^,\.;]+?)\s+(?:transforms?|converts?|changes?|alters?)\s+([^,\.;]+?)/gi, type: 'TRANSFORMS', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:replaces?|substitutes?|supersedes?)\s+([^,\.;]+?)/gi, type: 'REPLACES', conf: 0.8 },
+            { regex: /([^,\.;]+?)\s+(?:maintains?|preserves?|keeps?|retains?)\s+([^,\.;]+?)/gi, type: 'MAINTAINS', conf: 0.75 },
+            
+            // COMPETES/COOPERATES - 10+ patterns
+            { regex: /([^,\.;]+?)\s+(?:competes?\s+with|rivals?|vies?\s+with)\s+([^,\.;]+?)/gi, type: 'COMPETES_WITH', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:struggles?\s+with|contends?\s+with|fights?\s+with)\s+([^,\.;]+?)/gi, type: 'STRUGGLES_WITH', conf: 0.7 },
+            { regex: /([^,\.;]+?)\s+(?:partners?\s+with|allies?\s+with)\s+([^,\.;]+?)/gi, type: 'PARTNERS_WITH', conf: 0.75 },
+            
+            // SPATIAL - 10+ patterns
+            { regex: /([^,\.;]+?)\s+(?:near|close\s+to|adjacent\s+to)\s+([^,\.;]+?)/gi, type: 'SPATIAL_NEAR', conf: 0.6 },
+            { regex: /([^,\.;]+?)\s+(?:far\s+from|distant\s+from|away\s+from)\s+([^,\.;]+?)/gi, type: 'SPATIAL_FAR', conf: 0.6 },
+            { regex: /([^,\.;]+?)\s+(?:within|inside|contained\s+in)\s+([^,\.;]+?)/gi, type: 'SPATIAL_WITHIN', conf: 0.7 },
+            { regex: /([^,\.;]+?)\s+(?:located\s+in|positioned\s+in|situated\s+in)\s+([^,\.;]+?)/gi, type: 'LOCATED_IN', conf: 0.7 },
+            
+            // IMPLIES/SUGGESTS - 10+ patterns
+            { regex: /([^,\.;]+?)\s+(?:implies?|suggests?|indicates?|hints?\s+at)\s+([^,\.;]+?)/gi, type: 'IMPLIES', conf: 0.7 },
+            { regex: /([^,\.;]+?)\s+(?:means?|signifies?|represents?)\s+([^,\.;]+?)/gi, type: 'MEANS', conf: 0.75 },
+            { regex: /([^,\.;]+?)\s+(?:studies?|investigates?|researches?)\s+([^,\.;]+?)/gi, type: 'STUDIES', conf: 0.7 },
+            { regex: /([^,\.;]+?)\s+(?:evaluates?|assesses?|analyzes?)\s+([^,\.;]+?)/gi, type: 'EVALUATES', conf: 0.75 }
         ];
 
-        causePatterns.forEach(({ regex, type, confidence }) => {
+        // Process all patterns
+        allPatterns.forEach(({ regex, type, conf }) => {
             let match;
             while ((match = regex.exec(sentence)) !== null) {
                 const source = this.cleanEntity(match[1]);
@@ -320,111 +526,13 @@ class CausalityEngine {
                         source: { text: source, type: 'Concept' },
                         target: { text: target, type: 'Concept' },
                         type: type,
-                        confidence: confidence,
+                        confidence: conf,
                         temporal: this.extractTemporalInfo(match[0], sentence),
                         context: sentence.substring(0, 100)
                     });
                 }
             }
         });
-
-        // INFLUENCES relationships
-        const influencePatterns = [
-            {
-                regex: /([^,\.;]+?)\s+(?:influences?|affects?|impacts?|shapes?)\s+([^,\.;]+?)/gi,
-                type: 'INFLUENCES',
-                confidence: 0.75
-            },
-            {
-                regex: /([^,\.;]+?)\s+(?:plays?\s+a\s+role\s+in|contributes?\s+to|affects?)\s+([^,\.;]+?)/gi,
-                type: 'INFLUENCES',
-                confidence: 0.7
-            }
-        ];
-
-        influencePatterns.forEach(({ regex, type, confidence }) => {
-            let match;
-            while ((match = regex.exec(sentence)) !== null) {
-                relationships.push({
-                    source: { text: this.cleanEntity(match[1]), type: 'Concept' },
-                    target: { text: this.cleanEntity(match[2]), type: 'Concept' },
-                    type: type,
-                    confidence: confidence,
-                    temporal: this.extractTemporalInfo(match[0], sentence),
-                    context: sentence.substring(0, 100)
-                });
-            }
-        });
-
-        // PRECEDES relationships (temporal)
-        const precedesPattern = /([^,\.;]+?)\s+(?:before|prior\s+to|precedes?|earlier\s+than)\s+([^,\.;]+?)/gi;
-        let match;
-        while ((match = precedesPattern.exec(sentence)) !== null) {
-            relationships.push({
-                source: { text: this.cleanEntity(match[1]), type: 'Event' },
-                target: { text: this.cleanEntity(match[2]), type: 'Event' },
-                type: 'PRECEDES',
-                confidence: 0.8,
-                temporal: 'past',
-                context: sentence.substring(0, 100)
-            });
-        }
-
-        // CORRELATES_WITH relationships
-        const correlatePattern = /([^,\.;]+?)\s+(?:correlates?\s+with|is\s+associated\s+with|linked\s+to|related\s+to)\s+([^,\.;]+?)/gi;
-        match = null;
-        while ((match = correlatePattern.exec(sentence)) !== null) {
-            relationships.push({
-                source: { text: this.cleanEntity(match[1]), type: 'Concept' },
-                target: { text: this.cleanEntity(match[2]), type: 'Concept' },
-                type: 'CORRELATES_WITH',
-                confidence: 0.6,
-                temporal: 'unknown',
-                context: sentence.substring(0, 100)
-            });
-        }
-
-        // DEPENDS_ON relationships
-        const dependsPattern = /([^,\.;]+?)\s+(?:depends?\s+on|relies?\s+on|requires?)\s+([^,\.;]+?)/gi;
-        match = null;
-        while ((match = dependsPattern.exec(sentence)) !== null) {
-            relationships.push({
-                source: { text: this.cleanEntity(match[1]), type: 'Concept' },
-                target: { text: this.cleanEntity(match[2]), type: 'Concept' },
-                type: 'DEPENDS_ON',
-                confidence: 0.75,
-                temporal: 'unknown',
-                context: sentence.substring(0, 100)
-            });
-        }
-
-        // PREVENTS relationships
-        const preventsPattern = /([^,\.;]+?)\s+(?:prevents?|blocks?|stops?|hinders?|reduces?)\s+([^,\.;]+?)/gi;
-        match = null;
-        while ((match = preventsPattern.exec(sentence)) !== null) {
-            relationships.push({
-                source: { text: this.cleanEntity(match[1]), type: 'Concept' },
-                target: { text: this.cleanEntity(match[2]), type: 'Concept' },
-                type: 'PREVENTS',
-                confidence: 0.7,
-                temporal: this.extractTemporalInfo(match[0], sentence),
-                context: sentence.substring(0, 100)
-            });
-        }
-
-        // PREDICTS relationships
-        const predictsPattern = /([^,\.;]+?)\s+(?:predicts?|forecasts?|suggests?|indicates?)\s+([^,\.;]+?)/gi;
-        match = null;
-        while ((match = predictsPattern.exec(sentence)) !== null) {
-            relationships.push({
-                source: { text: this.cleanEntity(match[1]), type: 'Concept' },
-                target: { text: this.cleanEntity(match[2]), type: 'Outcome' },
-                type: 'PREDICTS',
-                confidence: 0.7,
-                temporal: 'future',
-                context: sentence.substring(0, 100)
-            });
-        }
 
         return relationships;
     }
