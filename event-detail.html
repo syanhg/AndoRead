@@ -46,189 +46,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        }
-        body {
-            background: #ffffff;
-            color: #1a1a1a;
-        }
-        code {
-            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
-            font-size: 0.875rem;
-        }
-        
-        /* IDE Style */
-        .ide-container {
-            border: 1px solid #1e1e1e;
-            border-radius: 6px;
-            overflow: hidden;
-            background: #1e1e1e;
-            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
-        }
-        
-        .ide-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: #252526;
-            border-bottom: 1px solid #3e3e42;
-            padding: 0;
-            height: 35px;
-        }
-        
-        .ide-tabs {
-            display: flex;
-            align-items: center;
-            height: 100%;
-        }
-        
-        .ide-tab {
-            padding: 0 16px;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            font-size: 12px;
-            color: #969696;
-            background: #2d2d30;
-            border-right: 1px solid #3e3e42;
-            cursor: pointer;
-            user-select: none;
-        }
-        
-        .ide-tab.active {
-            background: #1e1e1e;
-            color: #cccccc;
-        }
-        
-        .ide-actions {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            padding: 0 8px;
-        }
-        
-        .ide-btn {
-            padding: 4px;
-            color: #969696;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            border-radius: 3px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .ide-btn:hover {
-            background: #2a2d2e;
-            color: #cccccc;
-        }
-        
-        .ide-content {
-            display: flex;
-            background: #1e1e1e;
-            position: relative;
-        }
-        
-        .ide-line-numbers {
-            background: #252526;
-            color: #858585;
-            padding: 12px 8px;
-            font-size: 12px;
-            line-height: 1.6;
-            text-align: right;
-            user-select: none;
-            min-width: 50px;
-            border-right: 1px solid #3e3e42;
-        }
-        
-        .ide-text {
-            flex: 1;
-            overflow-x: auto;
-        }
-        
-        .ide-code {
-            margin: 0;
-            padding: 12px 16px;
-            font-size: 13px;
-            line-height: 1.6;
-            color: #d4d4d4;
-            background: transparent;
-            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        
-        .ide-code .source {
-            color: #4ec9b0;
-        }
-        
-        .ide-code .stat {
-            color: #ce9178;
-        }
-        
-        .ide-code .number {
-            color: #b5cea8;
-        }
-        
-        .ide-code .keyword {
-            color: #569cd6;
-        }
-        
-        .ide-code .comment {
-            color: #6a9955;
-            font-style: italic;
-        }
-        
-        .ide-code .string {
-            color: #ce9178;
-        }
-        
-        .ide-code .function {
-            color: #dcdcaa;
-        }
-        
-        .ide-code .section {
-            color: #4ec9b0;
-            font-weight: 600;
-        }
-        
-        .ide-code .highlight {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 2px 4px;
-            border-radius: 2px;
-        }
-        
-        /* Cursor-style improvements */
-        .ide-container {
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        }
-        
-        .ide-code {
-            font-size: 13px;
-            line-height: 1.7;
-        }
-        
-        .ide-line-numbers {
-            font-size: 13px;
-            line-height: 1.7;
-            padding: 12px 12px;
-        }
-    </style>
+    <link rel="stylesheet" href="event-detail.css">
 </head>
 <body>
-    <!-- Header - AndoRead Style (aligned with index) -->
+    <!-- Header - AndoRead Style -->
     <header class="sticky top-0 z-50 w-full bg-white border-b border-gray-200/50">
         <div class="container mx-auto px-6 lg:px-8">
             <div class="flex h-16 items-center justify-between">
-                <!-- Logo - Aligned with content -->
                 <a href="index.html" class="text-2xl font-medium text-gray-900 tracking-tight" style="font-family: 'Inter', sans-serif; font-weight: 500;">
                     AndoRead
                 </a>
                 
-                <!-- Search Bar - Top Right -->
                 <div class="relative w-full max-w-sm">
                     <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -241,19 +69,19 @@
         </div>
     </header>
 
-    <!-- Main Content - Aligned with header -->
+    <!-- Main Content -->
     <div class="container mx-auto px-6 lg:px-8 py-8 max-w-7xl">
-    <!-- Back Navigation -->
+        <!-- Back Navigation -->
         <div class="mb-6">
             <a href="index.html" class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
                 <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
+                </svg>
                 Back
-        </a>
-    </div>
+            </a>
+        </div>
 
-        <!-- Event Header - Minimal -->
+        <!-- Event Header -->
         <div class="mb-8">
             <div class="flex items-start justify-between gap-4 mb-3">
                 <h1 id="eventTitle" class="text-2xl font-semibold text-gray-900 leading-tight" style="font-family: 'Inter', sans-serif;">Loading...</h1>
@@ -265,13 +93,13 @@
                 </button>
             </div>
             <div class="flex items-center gap-4 text-xs text-gray-500">
-            <span id="closeDate">Closes: Loading...</span>
+                <span id="closeDate">Closes: Loading...</span>
                 <span>•</span>
                 <span id="lastUpdate"></span>
             </div>
         </div>
 
-        <!-- Stats Bar - Minimal -->
+        <!-- Stats Bar -->
         <div class="mb-8 flex items-center gap-6 pb-6 border-b border-gray-200">
             <div>
                 <div class="text-xs text-gray-500 mb-0.5">Volume</div>
@@ -290,97 +118,50 @@
             </div>
         </div>
 
-
-        <!-- Knowledge Graph Visualization - Cursor/Lovable Style -->
+        <!-- Main Prediction - Clean Design -->
         <div class="mb-8">
-            <div class="ide-container">
-                <div class="ide-header">
-                    <div class="ide-tabs">
-                        <div class="ide-tab active">knowledge-graph.ts</div>
+            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm overflow-hidden">
+                <div class="px-8 py-6">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="h-2 w-2 rounded-full bg-blue-600 animate-pulse"></div>
+                        <h2 class="text-lg font-semibold text-gray-900">Prediction</h2>
                     </div>
-                    <div class="ide-actions">
-                        <button class="ide-btn" title="Reset Layout" onclick="resetGraphLayout()">
-                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="ide-content" style="height: 500px; padding: 0;">
-                    <div id="knowledgeGraph" style="width: 100%; height: 100%;"></div>
-                </div>
-                    </div>
-                </div>
-
-        <!-- Analysis Content - IDE Style -->
-        <div class="mb-8">
-            <div id="analysisContent" class="ide-container">
-                <div class="ide-header">
-                    <div class="ide-tabs">
-                        <div class="ide-tab active" data-tab="analysis">reasoning.md</div>
-                        <div class="ide-tab" data-tab="summary">summary.md</div>
-                    </div>
-                    <div class="ide-actions">
-                        <button class="ide-btn" title="Copy">
-                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="ide-content">
-                    <div class="ide-line-numbers" id="analysisLineNumbers">1</div>
-                    <div class="ide-text">
-                        <pre class="ide-code"><code id="analysisCode">// Analyzing event with step-by-step reasoning...</code></pre>
-                    </div>
-                </div>
-                <div class="ide-content hidden" id="summaryContent">
-                    <div class="ide-line-numbers" id="summaryLineNumbers"></div>
-                    <div class="ide-text">
-                        <pre class="ide-code"><code id="summaryCode"></code></pre>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Statistical Metrics - IDE Style -->
-            <div id="statisticalMetrics" class="ide-container mt-4 hidden">
-                <div class="ide-header">
-                    <div class="ide-tabs">
-                        <div class="ide-tab active">metrics.json</div>
+                    <div id="mainPrediction" class="space-y-4">
+                        <div class="text-center py-12">
+                            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                            <p class="mt-4 text-sm text-gray-600">Analyzing event and generating prediction...</p>
                         </div>
-                    </div>
-                <div class="ide-content">
-                    <div class="ide-line-numbers"></div>
-                    <div class="ide-text">
-                        <pre class="ide-code"><code id="metricsCode"></code></pre>
-                    </div>
-                    </div>
-                </div>
-
-            <!-- Key Insight - IDE Style -->
-            <div id="insightContainer" class="ide-container mt-4 hidden">
-                <div class="ide-header">
-                    <div class="ide-tabs">
-                        <div class="ide-tab active">insight.txt</div>
-                    </div>
-                </div>
-                <div class="ide-content">
-                    <div class="ide-line-numbers"></div>
-                    <div class="ide-text">
-                        <pre class="ide-code"><code id="insightCode"></code></pre>
                     </div>
                 </div>
             </div>
         </div>
 
-
-        <!-- Sources - Minimal Grid -->
-        <div class="rounded-lg border border-gray-200 bg-white">
-            <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-                <h3 class="text-sm font-medium text-gray-900">Sources</h3>
-                <span class="text-xs text-gray-500" id="totalSources">0</span>
+        <!-- Analysis & Reasoning - Clean Text -->
+        <div class="mb-8">
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+                <div class="px-8 py-6 border-b border-gray-100">
+                    <h2 class="text-lg font-semibold text-gray-900">Analysis & Reasoning</h2>
+                    <p class="text-sm text-gray-500 mt-1">Causality-based statistical analysis from 30+ sources</p>
+                </div>
+                <div id="reasoningContainer" class="px-8 py-6">
+                    <div class="prose prose-sm max-w-none">
+                        <div id="reasoningContent" class="text-gray-700 leading-relaxed">
+                            <p class="text-gray-500 italic">Gathering sources and analyzing causal relationships...</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div id="sourcesList" class="p-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3"></div>
+        </div>
+
+        <!-- Sources -->
+        <div class="mb-8">
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-gray-900">Sources</h3>
+                    <span class="text-xs text-gray-500" id="totalSources">0</span>
+                </div>
+                <div id="sourcesList" class="p-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"></div>
+            </div>
         </div>
     </div>
 
