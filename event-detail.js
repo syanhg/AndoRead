@@ -1098,7 +1098,8 @@ function analyzeSourcesLocally(event, allSources) {
 
 function buildPrompt(event, allSources, knowledgeGraph = null) {
     // Advanced context engineering: multi-layer source processing
-    const sources = allSources.slice(0, 18).map((r, i) => {
+    // Use all sources (up to 35) for richer analysis
+    const sources = allSources.slice(0, 35).map((r, i) => {
         const text = (r.text || '').replace(/\n+/g, ' ').trim();
         const domain = r.url ? (new URL(r.url).hostname.replace('www.', '') || 'Unknown') : 'AI Source';
         
@@ -1184,42 +1185,68 @@ Key Causal Chains: ${knowledgeGraph.edges.filter(e => e.type === 'causes').slice
 }).join(', ')}
 Use this causal structure to inform your predictions.` : ''}
 
-ADVANCED ANALYSIS FRAMEWORK - USE CHAIN-OF-THOUGHT REASONING:
+ADVANCED ANALYSIS FRAMEWORK - PROPHET ARENA STYLE CAUSALITY-BASED PREDICTION:
 
-STEP 1: CONTEXT SYNTHESIS & PATTERN RECOGNITION
-   - Cross-reference information across ALL ${allSources.length} sources
-   - Identify consensus patterns, outlier perspectives, and conflicting evidence
-   - Weight sources by: relevance score × credibility × recency × content depth
-   - Extract temporal patterns, trend indicators, and momentum signals
-   - Map source relationships and information flow
+Based on Prophet Arena methodology (https://www.prophetarena.co/research/welcome), you must generate a structured probabilistic forecast that:
+1. Uses causality reasoning to connect information across sources
+2. Provides statistical forecasts with proper calibration
+3. Quantifies uncertainty and confidence
+4. Makes actionable predictions based on real-world information
 
-STEP 2: STATISTICAL MODELING & INFERENCE
-   - Apply Bayesian inference with evidence-weighted priors (use Beta distribution)
-   - Calculate 95% confidence intervals using Wilson score method
-   - Perform chi-square tests for categorical evidence distribution
-   - Apply Monte Carlo simulation (1000+ iterations) for uncertainty quantification
-   - Calculate effect sizes (Cohen's d) and practical significance
-   - Assess sample size adequacy and statistical power (1-β)
-   - Perform sensitivity analysis on key parameters
+${knowledgeGraph ? `KNOWLEDGE GRAPH CAUSALITY ANALYSIS:
+Total Nodes: ${knowledgeGraph.nodes.length}
+Total Relationships: ${knowledgeGraph.edges.length}
+Causal Chains: ${knowledgeGraph.metadata?.causalChains?.length || 0}
+Key Causal Relationships: ${knowledgeGraph.edges.filter(e => e.relationship === 'CAUSES' || e.relationship === 'INFLUENCES').slice(0, 10).map(e => {
+    const sourceNode = knowledgeGraph.nodes.find(n => n.id === e.source);
+    const targetNode = knowledgeGraph.nodes.find(n => n.id === e.target);
+    const sourceInfo = e.properties?.sourceTitle ? ` [Source: ${e.properties.sourceTitle}]` : '';
+    return `${sourceNode?.label || e.source} → ${targetNode?.label || e.target}${sourceInfo}`;
+}).join('; ')}
+Use these causal relationships to inform your statistical prediction.` : ''}
 
-STEP 3: MULTI-SOURCE REASONING & EVIDENCE INTEGRATION
-   - Compare perspectives from: news (${sourceCounts.find(s => s.type.includes('News'))?.count || 0}), market analysis, expert opinions, social signals
-   - Identify conflicting evidence and assess reliability using source credibility
-   - Weight recent information exponentially (decay factor: 0.95 per day)
-   - Consider source hierarchy: established news > analysis > forums > social media
-   - Apply Dempster-Shafer theory for conflicting evidence fusion
+STEP 1: CAUSALITY-BASED EVIDENCE GATHERING
+   - Examine ALL ${allSources.length} sources and identify causal factors
+   - For each source, extract: (1) causal factors mentioned, (2) their relationships, (3) temporal indicators
+   - Map causal chains: Factor A → Factor B → Event Outcome
+   - Weight causal evidence by: source credibility × relevance × recency × causal strength
+   - Cite specific sources by number when referencing causal factors
 
-STEP 4: MARKET DYNAMICS & TEMPORAL ANALYSIS
-   - Analyze volume trends, liquidity implications, and market depth
-   - Consider market efficiency and information asymmetry
-   - Factor in closing date proximity and time decay (exponential decay model)
-   - Assess market sentiment momentum and reversal signals
+STEP 2: STATISTICAL CAUSAL INFERENCE
+   - Apply Bayesian causal inference: P(Outcome|Causal_Factors) = P(Causal_Factors|Outcome) × P(Outcome) / P(Causal_Factors)
+   - Calculate causal effect sizes: How much does each causal factor increase/decrease probability?
+   - Use structural causal models to estimate direct and indirect effects
+   - Apply do-calculus for causal reasoning: What if Factor X changes?
+   - Calculate 95% confidence intervals using causal bootstrap methods
+   - Perform causal mediation analysis: Which factors mediate the relationship?
 
-STEP 5: REASONING SYNTHESIS
-   - Synthesize all evidence into coherent probability estimates
-   - Quantify uncertainty and confidence levels
-   - Identify key risk factors and edge cases
-   - Provide clear, traceable reasoning chain
+STEP 3: PROBABILISTIC FORECASTING (Prophet Arena Style)
+   - Generate probability distribution over all possible outcomes
+   - Ensure calibration: If you predict 70%, outcomes should occur ~70% of the time
+   - Apply Brier score optimization: Minimize (predicted_prob - actual_outcome)²
+   - Calculate expected value: E[Outcome] = Σ P(outcome_i) × value_i
+   - Assess prediction market alignment: Compare your probability to market price
+   - Quantify edge: Your probability - Market probability = Information advantage
+
+STEP 4: CAUSAL CHAIN REASONING
+   - Identify primary causal pathways leading to each outcome
+   - For each pathway, calculate: P(Pathway_Complete) = Π P(Step_i|Step_{i-1})
+   - Weight pathways by: (1) causal strength, (2) source credibility, (3) temporal proximity
+   - Identify critical causal factors: Which factors, if changed, would most affect outcome?
+   - Assess counterfactuals: What if key causal factors were different?
+
+STEP 5: UNCERTAINTY QUANTIFICATION & CALIBRATION
+   - Separate aleatoric uncertainty (inherent randomness) from epistemic uncertainty (lack of knowledge)
+   - Calibrate probabilities: Use Platt scaling or isotonic regression if needed
+   - Calculate prediction intervals: [P_lower, P_upper] such that true probability is within range 95% of time
+   - Assess confidence: High (well-calibrated, strong evidence), Medium (moderate calibration, mixed evidence), Low (poor calibration, weak evidence)
+   - Identify risk factors: What could cause your prediction to be wrong?
+
+STEP 6: FINAL CAUSAL PREDICTION SYNTHESIS
+   - Combine causal pathways using weighted averaging: P(Outcome) = Σ w_i × P(Pathway_i)
+   - Apply temporal discounting: More recent causal evidence weighted higher
+   - Synthesize: Clear logical chain from causal factors → statistical inference → probabilistic forecast
+   - Provide actionable insight: What causal factor is most important for the outcome?
 
 TASK - YOU MUST PROVIDE STEP-BY-STEP REASONING FIRST:
 
@@ -1901,9 +1928,10 @@ function displayKnowledgeGraph(graph) {
         .force('center', d3.forceCenter(width / 2, height / 2))
         .force('collision', d3.forceCollide().radius(30));
     
-    // Create arrows for directed edges
+    // Create arrows for directed edges - support more relationship types
+    const markerTypes = ['causes', 'influences', 'informs', 'affects', 'predicts', 'prevents'];
     svg.append('defs').selectAll('marker')
-        .data(['causes', 'influences', 'informs'])
+        .data(markerTypes)
         .enter().append('marker')
         .attr('id', d => d)
         .attr('viewBox', '0 -5 10 10')
@@ -1916,7 +1944,9 @@ function displayKnowledgeGraph(graph) {
         .attr('d', 'M0,-5L10,0L0,5')
         .attr('fill', d => {
             if (d === 'causes') return '#ce9178';
-            if (d === 'influences') return '#569cd6';
+            if (d === 'influences' || d === 'affects') return '#569cd6';
+            if (d === 'predicts') return '#c586c0';
+            if (d === 'prevents') return '#f48771';
             return '#4ec9b0';
         });
     
@@ -1926,13 +1956,53 @@ function displayKnowledgeGraph(graph) {
         .data(graph.edges)
         .enter().append('line')
         .attr('stroke', d => {
-            if (d.type === 'causes') return '#ce9178';
-            if (d.type === 'influences') return '#569cd6';
-            return '#4ec9b0';
+            const relType = (d.relationship || d.type || '').toLowerCase();
+            if (relType.includes('cause')) return '#ce9178';
+            if (relType.includes('influence') || relType.includes('affect')) return '#569cd6';
+            if (relType.includes('inform') || relType.includes('contain') || relType.includes('mention')) return '#4ec9b0';
+            if (relType.includes('prevent') || relType.includes('block')) return '#f48771';
+            if (relType.includes('predict') || relType.includes('forecast')) return '#c586c0';
+            if (relType.includes('depend') || relType.includes('require')) return '#dcdcaa';
+            return '#858585';
         })
         .attr('stroke-width', d => Math.sqrt(d.strength || 0.5) * 3)
         .attr('stroke-opacity', 0.6)
-        .attr('marker-end', d => `url(#${d.type})`);
+        .attr('marker-end', d => {
+            const relType = (d.relationship || d.type || '').toLowerCase();
+            if (relType.includes('cause')) return 'url(#causes)';
+            if (relType.includes('influence') || relType.includes('affect')) return 'url(#influences)';
+            if (relType.includes('predict') || relType.includes('forecast')) return 'url(#predicts)';
+            if (relType.includes('prevent') || relType.includes('block')) return 'url(#prevents)';
+            return 'url(#informs)';
+        });
+    
+    // Add relationship labels on edges
+    const linkLabel = svg.append('g')
+        .selectAll('text')
+        .data(graph.edges)
+        .enter().append('text')
+        .attr('class', 'edge-label')
+        .attr('font-size', '9px')
+        .attr('fill', '#b5cea8')
+        .attr('text-anchor', 'middle')
+        .attr('pointer-events', 'none')
+        .style('user-select', 'none')
+        .text(d => {
+            const relType = d.relationship || d.type || 'RELATES_TO';
+            // Shorten long relationship names for display
+            return relType.replace(/_/g, ' ').substring(0, 20);
+        })
+        .style('opacity', 0.8);
+    
+    // Add tooltips to links showing full relationship info
+    link.append('title')
+        .text(d => {
+            const relType = d.relationship || d.type || 'RELATES_TO';
+            const sourceNode = graph.nodes.find(n => n.id === d.source);
+            const targetNode = graph.nodes.find(n => n.id === d.target);
+            const sourceInfo = d.properties?.sourceTitle ? `\nSource: ${d.properties.sourceTitle}` : '';
+            return `${relType}\nFrom: ${sourceNode?.label || d.source}\nTo: ${targetNode?.label || d.target}\nStrength: ${((d.strength || 0.5) * 100).toFixed(1)}%${sourceInfo}`;
+        });
     
     // Draw nodes
     const node = svg.append('g')
@@ -1970,6 +2040,28 @@ function displayKnowledgeGraph(graph) {
             .attr('y1', d => d.source.y)
             .attr('x2', d => d.target.x)
             .attr('y2', d => d.target.y);
+        
+        // Update edge label positions (midpoint of edge)
+        linkLabel
+            .attr('x', d => (d.source.x + d.target.x) / 2)
+            .attr('y', d => (d.source.y + d.target.y) / 2)
+            .attr('dx', d => {
+                // Offset label perpendicular to edge to avoid overlap
+                const dx = d.target.x - d.source.x;
+                const dy = d.target.y - d.source.y;
+                const len = Math.sqrt(dx * dx + dy * dy);
+                if (len === 0) return 0;
+                const perpX = -dy / len * 12; // 12px offset
+                return perpX;
+            })
+            .attr('dy', d => {
+                const dx = d.target.x - d.source.x;
+                const dy = d.target.y - d.source.y;
+                const len = Math.sqrt(dx * dx + dy * dy);
+                if (len === 0) return 0;
+                const perpY = dx / len * 12; // 12px offset
+                return perpY;
+            });
         
         node
             .attr('cx', d => d.x)
