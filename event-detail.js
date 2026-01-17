@@ -256,7 +256,7 @@ async function searchWithAirweave(query, event) {
                 retrieval_strategy: 'hybrid',
                 temporal_relevance: 0.7,
                 rerank: true,
-                limit: 10
+                limit: 12
             }),
             signal: controller.signal
         });
@@ -303,7 +303,7 @@ async function buildKnowledgeGraph(event, allSources) {
                     expand_query: true,
                     retrieval_strategy: 'hybrid',
                     generate_answer: true,
-                    limit: 15
+                    limit: 20
                 })
             });
             
@@ -401,15 +401,21 @@ async function fetchMultipleSources(event) {
     const allSources = [];
     const searchQueries = generateSearchQueries(event);
     
-    // Enhanced: Fetch from diverse real-time sources including Airweave
+    // Enhanced: Fetch from diverse real-time sources including Airweave - get at least 30 sources
     const sourcePromises = [
         searchWithAirweave(event.title, event).catch(() => []),
-        searchWithExa(searchQueries.exa, 6).catch(() => []),
+        searchWithExa(searchQueries.exa, 8).catch(() => []),
         searchWithNewsAPI(event.title).catch(() => []),
         searchWithTavily(event.title).catch(() => []),
         searchWithSerper(event.title).catch(() => []),
         searchWithDuckDuckGo(event.title).catch(() => []),
-        searchWithReddit(event.title).catch(() => [])
+        searchWithReddit(event.title).catch(() => []),
+        // Additional queries for more sources
+        searchWithExa(`${event.title} analysis`, 5).catch(() => []),
+        searchWithExa(`${event.title} predictions`, 5).catch(() => []),
+        searchWithExa(`${event.title} news`, 5).catch(() => []),
+        searchWithAirweave(`${event.title} market analysis`, event).catch(() => []),
+        searchWithAirweave(`${event.title} latest updates`, event).catch(() => [])
     ];
     
     // Fast parallel fetching - get results as they come
@@ -441,7 +447,7 @@ async function fetchMultipleSources(event) {
             return { ...source, relevanceScore: Math.min(1, score) };
         })
         .sort((a, b) => b.relevanceScore - a.relevanceScore)
-        .slice(0, 18); // More sources for better reasoning
+        .slice(0, 35); // At least 30 sources for rich graph
 }
 
 function generateSearchQueries(event) {
